@@ -23,7 +23,6 @@ if (form) {
     const name = form.name.value.trim();
     const email = form.email.value.trim();
     const town = form.town.value.trim();
-    const updatesConsent = form.updatesConsent.checked;
 
     if (!name) {
       setFeedback("Please enter your name.", "error");
@@ -32,11 +31,6 @@ if (form) {
 
     if (!isValidEmail(email)) {
       setFeedback("Please enter a valid email.", "error");
-      return;
-    }
-
-    if (!updatesConsent) {
-      setFeedback("Please confirm you want PERX email updates.", "error");
       return;
     }
 
@@ -52,7 +46,7 @@ if (form) {
       name,
       email,
       town,
-      updatesConsent,
+      updatesConsent: true,
       region: "Long Island",
       source: "perx-waitlist-site",
       submittedAt: new Date().toISOString(),
