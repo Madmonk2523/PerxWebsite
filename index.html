@@ -3,280 +3,66 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PERX | Rewards In Motion</title>
+    <title>PERX | Long Island Waitlist</title>
     <meta
       name="description"
-      content="PERX automatically rewards people for exploring the real world and supporting local businesses."
+      content="Join the PERX Long Island early access waitlist for users and receive launch updates by email."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="ambient ambient-top"></div>
-    <div class="ambient ambient-mid"></div>
+    <div class="noise" aria-hidden="true"></div>
+    <div class="orb orb-a" aria-hidden="true"></div>
+    <div class="orb orb-b" aria-hidden="true"></div>
 
-    <header class="navbar" id="navbar">
-      <a class="logo" href="#hero" aria-label="PERX Home"
-        >PER<span class="logo-x">X</span></a
-      >
-      <nav class="nav-links">
-        <a href="#how">How It Works</a>
-        <a href="#map">Map</a>
-        <a href="#business">Businesses</a>
-        <a href="#waitlist">Waitlist</a>
-      </nav>
-      <a class="btn btn-sm" href="#waitlist">Join Waitlist</a>
-    </header>
+    <main class="shell">
+      <section class="waitlist-card" id="waitlist">
+        <p class="eyebrow">LONG ISLAND EARLY ACCESS</p>
+        <h1>PER<span class="logo-x">X</span></h1>
+        <p class="tagline">Something rewarding is arriving nearby.</p>
+        <p class="description">
+          This page is for users only right now. No fake images. No fake stats. No
+          fake reviews. Join the waitlist to get product updates and launch emails.
+        </p>
 
-    <main>
-      <section class="hero" id="hero">
-        <div class="hero-map-layer"></div>
-        <div class="hero-scan-lines"></div>
+        <form id="waitlistForm" class="waitlist-form" novalidate>
+          <label for="name">Name</label>
+          <input id="name" name="name" type="text" required autocomplete="name" placeholder="Your name" />
 
-        <div class="container hero-grid">
-          <div class="hero-copy reveal">
-            <p class="eyebrow">PRE-LAUNCH IN NYC</p>
-            <h1>Earn rewards just by being there.</h1>
-            <p class="lead">
-              PERX automatically rewards you for visiting participating businesses in
-              the real world.
-            </p>
-            <div class="hero-cta">
-              <a class="btn btn-primary" href="#waitlist">Join Waitlist</a>
-              <a class="btn btn-ghost" href="#business">For Businesses</a>
-            </div>
-            <div class="hero-mini-stats">
-              <div>
-                <strong>10,000+</strong>
-                <span>Rewards Earned</span>
-              </div>
-              <div>
-                <strong>50+</strong>
-                <span>NYC Businesses</span>
-              </div>
-              <div>
-                <strong>Daily</strong>
-                <span>Live Discovery</span>
-              </div>
-            </div>
-          </div>
+          <label for="email">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autocomplete="email"
+            placeholder="you@email.com"
+          />
 
-          <div class="hero-visual reveal" data-parallax-group>
-            <div class="phone-stack">
-              <article class="phone-card phone-main" data-parallax="18">
-                <div class="phone-notch"></div>
-                <div class="phone-screen map-screen">
-                  <h3>Nearby Rewards</h3>
-                  <div class="pulse pulse-a"></div>
-                  <div class="pulse pulse-b"></div>
-                  <div class="map-pin pin-a"></div>
-                  <div class="map-pin pin-b"></div>
-                  <div class="map-pin pin-c"></div>
-                </div>
-              </article>
-              <article class="phone-card phone-side" data-parallax="30">
-                <div class="phone-notch"></div>
-                <div class="phone-screen wallet-screen">
-                  <h3>Your PERX</h3>
-                  <p class="perx-count">248</p>
-                  <div class="reward-item">Coffee Reward Ready</div>
-                  <div class="reward-item">2x Bakery Boost</div>
-                  <div class="reward-item">Pizza Unlock Nearby</div>
-                </div>
-              </article>
-            </div>
+          <label for="town">Town (optional)</label>
+          <input id="town" name="town" type="text" autocomplete="address-level2" placeholder="Huntington" />
 
-            <div class="toast toast-a">+2 PERX earned</div>
-            <div class="toast toast-b">Reward unlocked nearby</div>
-            <div class="toast toast-c">Dessert spot in range</div>
-          </div>
-        </div>
-      </section>
+          <label class="check-row" for="updatesConsent">
+            <input id="updatesConsent" name="updatesConsent" type="checkbox" required />
+            <span>I want email updates from PERX.</span>
+          </label>
 
-      <section class="section" id="how">
-        <div class="container">
-          <div class="section-head reveal">
-            <p class="eyebrow">HOW IT WORKS</p>
-            <h2>One seamless loop. No friction.</h2>
-          </div>
-          <div class="steps-grid">
-            <article class="glass-card reveal">
-              <div class="step-icon">01</div>
-              <h3>Explore your city</h3>
-              <p>
-                Walk naturally through neighborhoods you love and discover places
-                you have never noticed before.
-              </p>
-            </article>
-            <article class="glass-card reveal">
-              <div class="step-icon">02</div>
-              <h3>Earn PERX automatically</h3>
-              <p>
-                As you approach participating businesses, rewards are detected and
-                credited without scanning, tapping, or waiting.
-              </p>
-            </article>
-            <article class="glass-card reveal">
-              <div class="step-icon">03</div>
-              <h3>Redeem rewards in-store</h3>
-              <p>
-                Use your earned PERX where it matters most: coffee, food, retail,
-                and neighborhood favorites.
-              </p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section map-section" id="map">
-        <div class="container">
-          <div class="section-head reveal">
-            <p class="eyebrow">IMMERSIVE MAP EXPERIENCE</p>
-            <h2>The city becomes your rewards interface.</h2>
-          </div>
-
-          <div class="map-stage reveal" id="mapStage">
-            <div class="map-grid"></div>
-            <svg class="route-svg" viewBox="0 0 1000 500" preserveAspectRatio="none">
-              <path id="routePath" d="M90,420 C180,310 270,350 355,250 C440,145 610,200 700,120 C780,70 870,95 930,45" />
-            </svg>
-            <div class="user-dot" id="userDot"></div>
-
-            <div class="zone zone-a"></div>
-            <div class="zone zone-b"></div>
-            <div class="zone zone-c"></div>
-
-            <button class="biz-pin p1">Coffee</button>
-            <button class="biz-pin p2">Pizza</button>
-            <button class="biz-pin p3">Barber</button>
-            <button class="biz-pin p4">Bakery</button>
-
-            <div class="floating-note n1">+3 PERX • Coffee earned</div>
-            <div class="floating-note n2">Radius active • Pizza offer</div>
-            <div class="floating-note n3">New store discovered</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" id="business">
-        <div class="container biz-grid">
-          <div class="section-head reveal">
-            <p class="eyebrow">FOR BUSINESSES</p>
-            <h2>Powerful controls. Measurable local growth.</h2>
-            <p class="lead subtle">
-              Set reward radius, cap redemptions, and only pay when rewards are
-              redeemed. Built for independent businesses.
-            </p>
-          </div>
-
-          <div class="dashboard reveal">
-            <div class="dash-top">
-              <h3>PERX Business Console</h3>
-              <span class="badge">Live</span>
-            </div>
-            <div class="kpi-grid">
-              <article>
-                <span>Foot Traffic</span>
-                <strong>+38%</strong>
-              </article>
-              <article>
-                <span>Redemptions</span>
-                <strong>1,284</strong>
-              </article>
-              <article>
-                <span>Avg Ticket Lift</span>
-                <strong>+22%</strong>
-              </article>
-            </div>
-            <div class="dash-panels">
-              <div class="panel">
-                <h4>Reward Radius</h4>
-                <p>350m around Union Square</p>
-                <div class="slider-track"><span style="width: 68%"></span></div>
-              </div>
-              <div class="panel">
-                <h4>Offer Rules</h4>
-                <ul>
-                  <li>Minimum spend: $12</li>
-                  <li>Daily cap: 120 users</li>
-                  <li>Peak boost: 5pm - 8pm</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" id="social">
-        <div class="container">
-          <div class="section-head reveal">
-            <p class="eyebrow">NYC MOMENTUM</p>
-            <h2>Built for city energy and local loyalty.</h2>
-          </div>
-
-          <div class="stats-strip reveal">
-            <article><strong>10,000+</strong><span>Rewards Earned</span></article>
-            <article><strong>50+</strong><span>Partner Businesses</span></article>
-            <article><strong>7k+</strong><span>Explorers on Waitlist</span></article>
-            <article><strong>Daily</strong><span>Live Foot Traffic Insights</span></article>
-          </div>
-
-          <div class="testimonial-grid">
-            <article class="testimonial reveal">
-              <p>
-                "Our afternoon traffic changed in two weeks. PERX turned nearby
-                walkers into regulars."
-              </p>
-              <span>Owner, East Village Coffee Bar</span>
-            </article>
-            <article class="testimonial reveal">
-              <p>
-                "It feels automatic. I just move through the city and rewards show
-                up at the right moments."
-              </p>
-              <span>Early User, Lower Manhattan</span>
-            </article>
-            <article class="testimonial reveal">
-              <p>
-                "This is the first rewards platform that feels premium for both
-                customers and small businesses."
-              </p>
-              <span>Founder, Midtown Dessert Studio</span>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section waitlist" id="waitlist">
-        <div class="container waitlist-wrap reveal">
-          <p class="eyebrow">EARLY ACCESS</p>
-          <h2>Be one of the first to explore with PERX.</h2>
-          <form id="waitlistForm" class="waitlist-form">
-            <label class="sr-only" for="email">Email</label>
-            <input id="email" type="email" required placeholder="you@company.com" />
-            <button type="submit" class="btn btn-primary">Join Waitlist</button>
-          </form>
+          <button type="submit" id="submitBtn">Join Waitlist</button>
           <p class="form-feedback" id="formFeedback" aria-live="polite"></p>
-        </div>
+        </form>
+
+        <p class="microcopy">
+          Waitlist entries are stored in a spreadsheet through your configured form
+          endpoint.
+        </p>
       </section>
     </main>
-
-    <footer class="footer">
-      <div class="container footer-inner">
-        <a class="logo" href="#hero">PER<span class="logo-x">X</span></a>
-        <nav>
-          <a href="#hero">Home</a>
-          <a href="#business">Businesses</a>
-          <a href="#waitlist">Contact</a>
-          <a href="#">Instagram</a>
-        </nav>
-      </div>
-    </footer>
 
     <script src="script.js"></script>
   </body>
