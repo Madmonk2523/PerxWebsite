@@ -1,8 +1,9 @@
 const SHEET_NAME = 'PERX Waitlist';
-const SPREADSHEET_ID = '';
+const SPREADSHEET_ID = '19M0jKEKPFIeIeI5NIVIryoYY-cfuCF0CgqXEAfgrlrs';
 const ADMIN_EMAIL = 'chasemallor@gmail.com';
 const EMAIL_FROM_NAME = 'PERX';
 const MIN_FORM_FILL_MS = 3000;
+const TIMEZONE = 'America/New_York';
 
 function doPost(e) {
   try {
@@ -15,7 +16,6 @@ function doPost(e) {
 
 function doGet(e) {
   const action = String((e.parameter && e.parameter.action) || '').trim();
-  const token = String((e.parameter && e.parameter.token) || '').trim();
   const callback = String((e.parameter && e.parameter.callback) || '').trim();
 
   if (action === 'signup') {
@@ -39,35 +39,11 @@ function doGet(e) {
     return jsonResponse_(result);
   }
 
-  if (action !== 'verify' || !token) {
+  if (action !== 'verify') {
     return HtmlService.createHtmlOutput('Invalid verification link.');
   }
 
-  const sheet = getOrCreateSheet_(getSpreadsheet_());
-  const data = sheet.getDataRange().getValues();
-
-  for (let index = 1; index < data.length; index += 1) {
-    if (String(data[index][7] || '') !== token) {
-      continue;
-    }
-
-    const rowNumber = index + 1;
-    const status = String(data[index][6] || '').toLowerCase();
-
-    if (status !== 'verified') {
-      sheet.getRange(rowNumber, 7).setValue('verified');
-      sheet.getRange(rowNumber, 9).setValue(new Date());
-    }
-
-    return HtmlService.createHtmlOutput(
-      '<html><body style="font-family:Arial,sans-serif;padding:32px;background:#f6f3ff;color:#181423;">' +
-        '<h2 style="margin:0 0 12px;">PERX</h2>' +
-        '<p style="margin:0;">Your email is confirmed. You are on the waitlist.</p>' +
-      '</body></html>'
-    );
-  }
-
-  return HtmlService.createHtmlOutput('Verification link expired or invalid.');
+  return HtmlService.createHtmlOutput('Email verification is not required.');
 }
 
 function processSignup_(payload) {
@@ -77,7 +53,6 @@ function processSignup_(payload) {
   const name = String(payload.name || '').trim();
   const town = String(payload.town || '').trim();
   const company = String(payload.company || '').trim();
-  const submittedAt = new Date(payload.submittedAt || new Date().toISOString());
   const formStartedAt = Number(payload.formStartedAt || 0);
   const elapsedMs = formStartedAt ? Date.now() - formStartedAt : 0;
 
@@ -99,43 +74,22 @@ function processSignup_(payload) {
 
   const existingRow = findRowByEmail_(sheet, email);
   if (existingRow) {
-    const existingStatus = String(sheet.getRange(existingRow, 7).getValue() || '').toLowerCase();
-    const existingToken = String(sheet.getRange(existingRow, 8).getValue() || '');
-
-    if (existingStatus === 'verified') {
-      return { ok: false, message: 'That email is already on the waitlist.' };
-    }
-
-    if (existingStatus === 'pending' && existingToken) {
-      sendVerificationEmail_(email, name, existingToken);
-      return {
-        ok: true,
-        message: 'You already signed up. We sent a fresh confirmation email.',
-      };
-    }
+    return { ok: false, message: 'That email is already on the waitlist.' };
   }
 
-  const verificationToken = Utilities.getUuid();
   sheet.appendRow([
-    new Date(),
+    formatEasternTime_(new Date()),
     name,
     email,
     town,
     String(payload.region || 'Long Island').trim(),
-    String(payload.source || 'website').trim(),
-    'pending',
-    verificationToken,
-    '',
-    String(payload.userAgent || '').trim(),
-    submittedAt,
   ]);
 
-  sendVerificationEmail_(email, name, verificationToken);
   notifyAdmin_(name, email, town);
 
   return {
     ok: true,
-    message: 'Check your email to confirm your spot on the waitlist.',
+    message: 'You are on the waitlist.',
   };
 }
 
@@ -146,9 +100,8 @@ function sendWaitlistBroadcast(subject, htmlBody, plainTextBody) {
 
   for (let index = 1; index < data.length; index += 1) {
     const email = normalizeEmail_(data[index][2]);
-    const status = String(data[index][6] || '').toLowerCase();
 
-    if (!email || status !== 'verified') {
+    if (!email) {
       continue;
     }
 
@@ -168,12 +121,47 @@ function sendWaitlistBroadcast(subject, htmlBody, plainTextBody) {
   }
 }
 
+function clearWaitlist() {
+  const sheet = getOrCreateSheet_(getSpreadsheet_());
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+  }
+}
+
 function getSpreadsheet_() {
   if (SPREADSHEET_ID) {
-    return SpreadsheetApp.openById(SPREADSHEET_ID);
+    const spreadsheetId = extractSpreadsheetId_(SPREADSHEET_ID);
+    if (spreadsheetId) {
+      return SpreadsheetApp.openById(spreadsheetId);
+    }
   }
 
   return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function extractSpreadsheetId_(value) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  // Accept either a direct spreadsheet ID or a full Google Sheets URL.
+  const match = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (match && match[1]) {
+    return match[1];
+  }
+
+  if (/^[a-zA-Z0-9-_]{20,}$/.test(raw)) {
+    return raw;
+  }
+
+  return '';
+}
+
+function formatEasternTime_(dateValue) {
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+  return Utilities.formatDate(date, TIMEZONE, 'M/d/yyyy h:mm:ss a');
 }
 
 function getOrCreateSheet_(spreadsheet) {
@@ -187,12 +175,6 @@ function getOrCreateSheet_(spreadsheet) {
       'email',
       'town',
       'region',
-      'source',
-      'status',
-      'verificationToken',
-      'verifiedAt',
-      'userAgent',
-      'submittedAt',
     ]);
   }
 

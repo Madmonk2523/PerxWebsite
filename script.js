@@ -20,10 +20,16 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function submitViaJsonp(payload) {
+function delay(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function submitViaJsonpOnce(payload) {
   return new Promise((resolve, reject) => {
     const callbackName = `perxWaitlist_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-    const timeoutMs = 12000;
+    const timeoutMs = 20000;
 
     const query = new URLSearchParams({
       action: "signup",
@@ -37,6 +43,7 @@ function submitViaJsonp(payload) {
       source: payload.source,
       submittedAt: payload.submittedAt,
       userAgent: String(payload.userAgent || "").slice(0, 180),
+      _ts: String(Date.now()),
     });
 
     const script = document.createElement("script");
@@ -70,9 +77,24 @@ function submitViaJsonp(payload) {
   });
 }
 
+async function submitViaJsonp(payload) {
+  try {
+    return await submitViaJsonpOnce(payload);
+  } catch (firstError) {
+    // Retry once because Apps Script can fail transiently on cold starts/network hiccups.
+    await delay(700);
+    return submitViaJsonpOnce(payload);
+  }
+}
+
 if (form) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+
+    if (!window.navigator.onLine) {
+      setFeedback("You appear to be offline. Reconnect and try again.", "error");
+      return;
+    }
 
     const name = form.name.value.trim();
     const email = form.email.value.trim().toLowerCase();
@@ -124,7 +146,10 @@ if (form) {
       form.reset();
       form.formStartedAt.value = String(Date.now());
     } catch (error) {
-      setFeedback(error.message || "Could not submit right now. Please try again in a moment.", "error");
+      setFeedback(
+        error.message || "Could not submit right now. Please try again in a moment.",
+        "error"
+      );
     } finally {
       submitBtn.disabled = false;
     }
