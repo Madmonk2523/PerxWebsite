@@ -20,6 +20,56 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function submitViaJsonp(payload) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `perxWaitlist_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+    const timeoutMs = 12000;
+
+    const query = new URLSearchParams({
+      action: "signup",
+      callback: callbackName,
+      name: payload.name,
+      email: payload.email,
+      town: payload.town,
+      company: payload.company,
+      formStartedAt: String(payload.formStartedAt),
+      region: payload.region,
+      source: payload.source,
+      submittedAt: payload.submittedAt,
+      userAgent: String(payload.userAgent || "").slice(0, 180),
+    });
+
+    const script = document.createElement("script");
+    const cleanup = () => {
+      if (window[callbackName]) {
+        delete window[callbackName];
+      }
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+      clearTimeout(timeoutId);
+    };
+
+    window[callbackName] = (result) => {
+      cleanup();
+      resolve(result || { ok: false, message: "No response from server." });
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Could not reach waitlist server. Check Apps Script deployment access."));
+    };
+
+    script.src = `${WAITLIST_ENDPOINT}?${query.toString()}`;
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Waitlist server timed out. Try again."));
+    }, timeoutMs);
+
+    document.body.appendChild(script);
+  });
+}
+
 if (form) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -65,19 +115,12 @@ if (form) {
     setFeedback("Submitting...", null);
 
     try {
-      await fetch(WAITLIST_ENDPOINT, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
-        body: JSON.stringify(payload),
-      });
+      const result = await submitViaJsonp(payload);
+      if (!result.ok) {
+        throw new Error(result.message || "Could not submit right now. Please try again.");
+      }
 
-      setFeedback(
-        "Request sent. Check your inbox in 1-2 minutes for a confirmation email.",
-        "success"
-      );
+      setFeedback(result.message || "Check your inbox to confirm your spot.", "success");
       form.reset();
       form.formStartedAt.value = String(Date.now());
     } catch (error) {

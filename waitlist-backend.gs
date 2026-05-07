@@ -6,80 +6,37 @@ const MIN_FORM_FILL_MS = 3000;
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents || '{}');
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = getOrCreateSheet_(spreadsheet);
-    const email = normalizeEmail_(payload.email);
-    const name = String(payload.name || '').trim();
-    const town = String(payload.town || '').trim();
-    const company = String(payload.company || '').trim();
-    const submittedAt = new Date(payload.submittedAt || new Date().toISOString());
-    const formStartedAt = Number(payload.formStartedAt || 0);
-    const elapsedMs = formStartedAt ? Date.now() - formStartedAt : 0;
-
-    if (company) {
-      return jsonResponse_({ ok: true, message: 'Submission received.' });
-    }
-
-    if (!name) {
-      return jsonResponse_({ ok: false, message: 'Name is required.' }, 400);
-    }
-
-    if (!isValidEmail_(email)) {
-      return jsonResponse_({ ok: false, message: 'Enter a valid email address.' }, 400);
-    }
-
-    if (elapsedMs > 0 && elapsedMs < MIN_FORM_FILL_MS) {
-      return jsonResponse_({ ok: false, message: 'Please wait a moment and try again.' }, 429);
-    }
-
-    const existingRow = findRowByEmail_(sheet, email);
-    if (existingRow) {
-      const existingStatus = String(sheet.getRange(existingRow, 7).getValue() || '').toLowerCase();
-      const existingToken = String(sheet.getRange(existingRow, 8).getValue() || '');
-
-      if (existingStatus === 'verified') {
-        return jsonResponse_({ ok: false, message: 'That email is already on the waitlist.' }, 409);
-      }
-
-      if (existingStatus === 'pending' && existingToken) {
-        sendVerificationEmail_(email, name, existingToken);
-        return jsonResponse_({
-          ok: true,
-          message: 'You already signed up. We sent a fresh confirmation email.',
-        });
-      }
-    }
-
-    const verificationToken = Utilities.getUuid();
-    sheet.appendRow([
-      new Date(),
-      name,
-      email,
-      town,
-      String(payload.region || 'Long Island').trim(),
-      String(payload.source || 'website').trim(),
-      'pending',
-      verificationToken,
-      '',
-      String(payload.userAgent || '').trim(),
-      submittedAt,
-    ]);
-
-    sendVerificationEmail_(email, name, verificationToken);
-    notifyAdmin_(name, email, town);
-
-    return jsonResponse_({
-      ok: true,
-      message: 'Check your email to confirm your spot on the waitlist.',
-    });
+    return jsonResponse_(processSignup_(payload));
   } catch (error) {
-    return jsonResponse_({ ok: false, message: 'Server error. Please try again later.' }, 500);
+    return jsonResponse_({ ok: false, message: 'Server error. Please try again later.' });
   }
 }
 
 function doGet(e) {
   const action = String((e.parameter && e.parameter.action) || '').trim();
   const token = String((e.parameter && e.parameter.token) || '').trim();
+  const callback = String((e.parameter && e.parameter.callback) || '').trim();
+
+  if (action === 'signup') {
+    const payload = {
+      name: e.parameter.name,
+      email: e.parameter.email,
+      town: e.parameter.town,
+      company: e.parameter.company,
+      formStartedAt: e.parameter.formStartedAt,
+      region: e.parameter.region,
+      source: e.parameter.source,
+      submittedAt: e.parameter.submittedAt,
+      userAgent: e.parameter.userAgent,
+    };
+
+    const result = processSignup_(payload);
+    if (callback) {
+      return jsonpResponse_(callback, result);
+    }
+
+    return jsonResponse_(result);
+  }
 
   if (action !== 'verify' || !token) {
     return HtmlService.createHtmlOutput('Invalid verification link.');
@@ -110,6 +67,75 @@ function doGet(e) {
   }
 
   return HtmlService.createHtmlOutput('Verification link expired or invalid.');
+}
+
+function processSignup_(payload) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = getOrCreateSheet_(spreadsheet);
+  const email = normalizeEmail_(payload.email);
+  const name = String(payload.name || '').trim();
+  const town = String(payload.town || '').trim();
+  const company = String(payload.company || '').trim();
+  const submittedAt = new Date(payload.submittedAt || new Date().toISOString());
+  const formStartedAt = Number(payload.formStartedAt || 0);
+  const elapsedMs = formStartedAt ? Date.now() - formStartedAt : 0;
+
+  if (company) {
+    return { ok: true, message: 'Submission received.' };
+  }
+
+  if (!name) {
+    return { ok: false, message: 'Name is required.' };
+  }
+
+  if (!isValidEmail_(email)) {
+    return { ok: false, message: 'Enter a valid email address.' };
+  }
+
+  if (elapsedMs > 0 && elapsedMs < MIN_FORM_FILL_MS) {
+    return { ok: false, message: 'Please wait a moment and try again.' };
+  }
+
+  const existingRow = findRowByEmail_(sheet, email);
+  if (existingRow) {
+    const existingStatus = String(sheet.getRange(existingRow, 7).getValue() || '').toLowerCase();
+    const existingToken = String(sheet.getRange(existingRow, 8).getValue() || '');
+
+    if (existingStatus === 'verified') {
+      return { ok: false, message: 'That email is already on the waitlist.' };
+    }
+
+    if (existingStatus === 'pending' && existingToken) {
+      sendVerificationEmail_(email, name, existingToken);
+      return {
+        ok: true,
+        message: 'You already signed up. We sent a fresh confirmation email.',
+      };
+    }
+  }
+
+  const verificationToken = Utilities.getUuid();
+  sheet.appendRow([
+    new Date(),
+    name,
+    email,
+    town,
+    String(payload.region || 'Long Island').trim(),
+    String(payload.source || 'website').trim(),
+    'pending',
+    verificationToken,
+    '',
+    String(payload.userAgent || '').trim(),
+    submittedAt,
+  ]);
+
+  sendVerificationEmail_(email, name, verificationToken);
+  notifyAdmin_(name, email, town);
+
+  return {
+    ok: true,
+    message: 'Check your email to confirm your spot on the waitlist.',
+  };
 }
 
 function sendWaitlistBroadcast(subject, htmlBody, plainTextBody) {
@@ -226,6 +252,14 @@ function isValidEmail_(email) {
 function jsonResponse_(payload, statusCode) {
   const output = ContentService.createTextOutput(JSON.stringify(payload));
   output.setMimeType(ContentService.MimeType.JSON);
+  return output;
+}
+
+function jsonpResponse_(callback, payload) {
+  const safeCallback = String(callback || '').replace(/[^a-zA-Z0-9_$.]/g, '');
+  const body = safeCallback + '(' + JSON.stringify(payload) + ');';
+  const output = ContentService.createTextOutput(body);
+  output.setMimeType(ContentService.MimeType.JAVASCRIPT);
   return output;
 }
 
