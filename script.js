@@ -74,7 +74,10 @@ if (form) {
         body: JSON.stringify(payload),
       });
 
-      setFeedback("Submission received. Check your inbox to confirm your spot.", "success");
+      setFeedback(
+        "Request sent. Check your inbox in 1-2 minutes for a confirmation email.",
+        "success"
+      );
       form.reset();
       form.formStartedAt.value = String(Date.now());
     } catch (error) {
