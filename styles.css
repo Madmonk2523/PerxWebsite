@@ -1,13 +1,13 @@
 :root {
-  --bg: #08080b;
-  --surface: rgba(255, 255, 255, 0.05);
-  --surface-strong: rgba(255, 255, 255, 0.08);
-  --stroke: rgba(255, 255, 255, 0.16);
-  --text: #f7f7fb;
-  --muted: #c0c1cf;
-  --accent: #9f79ff;
-  --accent-strong: #c7b2ff;
-  --success: #9ee8b6;
+  --bg: #f6f3ff;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-strong: rgba(255, 255, 255, 0.88);
+  --stroke: rgba(70, 53, 116, 0.1);
+  --text: #181423;
+  --muted: #625d74;
+  --accent: #8b72e8;
+  --accent-strong: #745ed1;
+  --success: #1d8b57;
 }
 
 * {
@@ -23,8 +23,9 @@ body {
 body {
   font-family: "Manrope", "Segoe UI", sans-serif;
   color: var(--text);
-  background: radial-gradient(circle at 20% 10%, #171022 0%, transparent 35%),
-    radial-gradient(circle at 80% 90%, #110a1f 0%, transparent 30%), var(--bg);
+  background: radial-gradient(circle at 18% 12%, rgba(161, 135, 244, 0.18) 0%, transparent 34%),
+    radial-gradient(circle at 82% 88%, rgba(184, 168, 255, 0.18) 0%, transparent 32%),
+    linear-gradient(180deg, #fcfbff 0%, #f3efff 100%);
   overflow-x: hidden;
 }
 
@@ -39,9 +40,9 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(43, 29, 82, 0.06) 1px, transparent 1px);
   background-size: 3px 3px;
-  opacity: 0.08;
+  opacity: 0.4;
 }
 
 .orb {
@@ -57,25 +58,25 @@ body {
 .orb-a {
   top: -8rem;
   left: -7rem;
-  background: rgba(159, 121, 255, 0.28);
+  background: rgba(162, 135, 244, 0.22);
   animation: drift 15s ease-in-out infinite;
 }
 
 .orb-b {
   right: -6rem;
   bottom: -8rem;
-  background: rgba(110, 74, 221, 0.24);
+  background: rgba(202, 191, 255, 0.26);
   animation: drift 18s ease-in-out infinite reverse;
 }
 
 .waitlist-card {
   width: min(100%, 34rem);
   border: 1px solid var(--stroke);
-  border-radius: 1.25rem;
-  padding: 1.1rem;
-  background: linear-gradient(155deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-  backdrop-filter: blur(12px);
-  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.36), 0 0 0 1px rgba(159, 121, 255, 0.24);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(247, 243, 255, 0.78));
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 60px rgba(110, 92, 169, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.65);
 }
 
 .eyebrow {
@@ -84,6 +85,7 @@ body {
   font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  font-weight: 700;
 }
 
 h1 {
@@ -95,12 +97,12 @@ h1 {
 
 .logo-x {
   color: var(--accent-strong);
-  text-shadow: 0 0 24px rgba(186, 153, 255, 0.85);
+  text-shadow: 0 0 16px rgba(139, 114, 232, 0.22);
 }
 
 .tagline {
   margin: 0.45rem 0 0;
-  color: #ececff;
+  color: #241d35;
   font-weight: 600;
   font-size: clamp(1rem, 4vw, 1.15rem);
 }
@@ -120,34 +122,36 @@ h1 {
 
 .waitlist-form label {
   font-size: 0.83rem;
-  color: #d6d7e1;
+  color: #4f4a61;
+  font-weight: 600;
 }
 
 .waitlist-form input[type="text"],
 .waitlist-form input[type="email"] {
   width: 100%;
   border: 1px solid var(--stroke);
-  border-radius: 0.85rem;
+  border-radius: 1rem;
   background: var(--surface);
-  color: #fff;
-  padding: 0.76rem 0.85rem;
+  color: var(--text);
+  padding: 0.92rem 1rem;
+  font-size: 16px;
   outline: none;
   transition: border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
 }
 
 .waitlist-form input::placeholder {
-  color: #969ab1;
+  color: #8d879e;
 }
 
 .waitlist-form input:focus {
-  border-color: rgba(192, 167, 255, 0.95);
+  border-color: rgba(139, 114, 232, 0.45);
   background: var(--surface-strong);
-  box-shadow: 0 0 0 3px rgba(159, 121, 255, 0.2);
+  box-shadow: 0 0 0 4px rgba(139, 114, 232, 0.12);
 }
 
 .disclaimer {
   margin: 0.1rem 0 0;
-  color: #b7bad0;
+  color: #777289;
   font-size: 0.8rem;
   line-height: 1.45;
 }
@@ -155,20 +159,20 @@ h1 {
 button {
   margin-top: 0.2rem;
   width: 100%;
-  border: 1px solid rgba(194, 168, 255, 0.7);
+  border: 1px solid rgba(139, 114, 232, 0.34);
   border-radius: 999px;
-  background: linear-gradient(120deg, #7f53ff, #b79dff);
+  background: linear-gradient(120deg, #7f63e6, #9a88ea);
   color: #fff;
   font-weight: 700;
-  font-size: 0.94rem;
-  padding: 0.82rem 1rem;
+  font-size: 0.97rem;
+  padding: 0.98rem 1rem;
   cursor: pointer;
   transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
 }
 
 button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(124, 85, 230, 0.4);
+  box-shadow: 0 12px 24px rgba(124, 85, 230, 0.2);
 }
 
 button:disabled {
@@ -210,15 +214,21 @@ button:disabled {
 
 @media (max-width: 520px) {
   .shell {
-    padding: 0.75rem;
+    min-height: 100dvh;
+    padding: max(0.85rem, env(safe-area-inset-top)) 0.75rem max(1rem, env(safe-area-inset-bottom));
   }
 
   .waitlist-card {
-    padding: 0.9rem;
-    border-radius: 1rem;
+    padding: 1rem;
+    border-radius: 1.2rem;
   }
 
   .description {
     font-size: 0.9rem;
+  }
+
+  .orb {
+    filter: blur(72px);
+    opacity: 0.8;
   }
 }
