@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>PERX | Long Island Waitlist</title>
     <meta
       name="description"
@@ -27,8 +27,9 @@
         <h1>PER<span class="logo-x">X</span></h1>
         <p class="tagline">Something rewarding is arriving nearby.</p>
         <p class="description">
-          This page is for users only right now. No fake images. No fake stats. No
-          fake reviews. Join the waitlist to get product updates and launch emails.
+          PERX is preparing a focused Long Island launch for early users. Join the
+          waitlist to get first access, product updates, and launch announcements by
+          email.
         </p>
 
         <form id="waitlistForm" class="waitlist-form" novalidate>
@@ -42,11 +43,14 @@
             type="email"
             required
             autocomplete="email"
+            inputmode="email"
+            autocapitalize="none"
+            spellcheck="false"
             placeholder="you@email.com"
           />
 
           <label for="town">Town (optional)</label>
-          <input id="town" name="town" type="text" autocomplete="address-level2" placeholder="Huntington" />
+          <input id="town" name="town" type="text" autocomplete="address-level2" placeholder="Your town" />
 
           <label class="check-row" for="updatesConsent">
             <input id="updatesConsent" name="updatesConsent" type="checkbox" required />
@@ -57,10 +61,6 @@
           <p class="form-feedback" id="formFeedback" aria-live="polite"></p>
         </form>
 
-        <p class="microcopy">
-          Waitlist entries are stored in a spreadsheet through your configured form
-          endpoint.
-        </p>
       </section>
     </main>
 
