@@ -1,4 +1,4 @@
-const SHEET_NAME = 'Waitlist';
+const SHEET_NAME = 'PERX Waitlist';
 const ADMIN_EMAIL = 'your-email@example.com';
 const EMAIL_FROM_NAME = 'PERX';
 const MIN_FORM_FILL_MS = 3000;

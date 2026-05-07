@@ -65,32 +65,16 @@ if (form) {
     setFeedback("Submitting...", null);
 
     try {
-      const response = await fetch(WAITLIST_ENDPOINT, {
+      await fetch(WAITLIST_ENDPOINT, {
         method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
         body: JSON.stringify(payload),
       });
 
-      const rawText = await response.text();
-      let result = null;
-
-      try {
-        result = JSON.parse(rawText);
-      } catch (parseError) {
-        result = null;
-      }
-
-      if (!response.ok) {
-        throw new Error("Could not submit right now. Please check the Apps Script deployment access settings.");
-      }
-
-      if (!result || !result.ok) {
-        throw new Error((result && result.message) || "Could not submit right now. Please try again in a moment.");
-      }
-
-      setFeedback(
-        result.message || "Check your inbox to confirm your spot on the waitlist.",
-        "success"
-      );
+      setFeedback("Submission received. Check your inbox to confirm your spot.", "success");
       form.reset();
       form.formStartedAt.value = String(Date.now());
     } catch (error) {
