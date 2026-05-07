@@ -1,4 +1,5 @@
 const SHEET_NAME = 'PERX Waitlist';
+const SPREADSHEET_ID = '';
 const ADMIN_EMAIL = 'chasemallor@gmail.com';
 const EMAIL_FROM_NAME = 'PERX';
 const MIN_FORM_FILL_MS = 3000;
@@ -42,7 +43,7 @@ function doGet(e) {
     return HtmlService.createHtmlOutput('Invalid verification link.');
   }
 
-  const sheet = getOrCreateSheet_(SpreadsheetApp.getActiveSpreadsheet());
+  const sheet = getOrCreateSheet_(getSpreadsheet_());
   const data = sheet.getDataRange().getValues();
 
   for (let index = 1; index < data.length; index += 1) {
@@ -70,7 +71,7 @@ function doGet(e) {
 }
 
 function processSignup_(payload) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheet = getSpreadsheet_();
   const sheet = getOrCreateSheet_(spreadsheet);
   const email = normalizeEmail_(payload.email);
   const name = String(payload.name || '').trim();
@@ -139,7 +140,7 @@ function processSignup_(payload) {
 }
 
 function sendWaitlistBroadcast(subject, htmlBody, plainTextBody) {
-  const sheet = getOrCreateSheet_(SpreadsheetApp.getActiveSpreadsheet());
+  const sheet = getOrCreateSheet_(getSpreadsheet_());
   const data = sheet.getDataRange().getValues();
   const sent = [];
 
@@ -165,6 +166,14 @@ function sendWaitlistBroadcast(subject, htmlBody, plainTextBody) {
 
     sent.push(email);
   }
+}
+
+function getSpreadsheet_() {
+  if (SPREADSHEET_ID) {
+    return SpreadsheetApp.openById(SPREADSHEET_ID);
+  }
+
+  return SpreadsheetApp.getActiveSpreadsheet();
 }
 
 function getOrCreateSheet_(spreadsheet) {
