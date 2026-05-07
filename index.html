@@ -24,7 +24,7 @@
     <main class="shell">
       <section class="waitlist-card" id="waitlist">
         <p class="eyebrow">LONG ISLAND WAITLIST</p>
-        <h1>PER<span class="logo-x">X</span></h1>
+        <h1><span class="logo-x">P</span>ERX</h1>
         <p class="tagline">Rewards for moving through Long Island.</p>
         <p class="description">
           PERX is building a cleaner way to discover local spots and unlock rewards
@@ -33,6 +33,19 @@
         </p>
 
         <form id="waitlistForm" class="waitlist-form" novalidate>
+          <div class="trap-field" aria-hidden="true">
+            <label for="company">Company</label>
+            <input
+              id="company"
+              name="company"
+              type="text"
+              tabindex="-1"
+              autocomplete="off"
+            />
+          </div>
+
+          <input id="formStartedAt" name="formStartedAt" type="hidden" value="" />
+
           <label for="name">Name</label>
           <input id="name" name="name" type="text" required autocomplete="name" placeholder="Your name" />
 

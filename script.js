@@ -4,6 +4,10 @@ const form = document.getElementById("waitlistForm");
 const feedback = document.getElementById("formFeedback");
 const submitBtn = document.getElementById("submitBtn");
 
+if (form && form.formStartedAt) {
+  form.formStartedAt.value = String(Date.now());
+}
+
 function setFeedback(message, type) {
   feedback.textContent = message;
   feedback.classList.remove("success", "error");
@@ -21,8 +25,10 @@ if (form) {
     event.preventDefault();
 
     const name = form.name.value.trim();
-    const email = form.email.value.trim();
+    const email = form.email.value.trim().toLowerCase();
     const town = form.town.value.trim();
+    const company = form.company.value.trim();
+    const formStartedAt = Number(form.formStartedAt.value || 0);
 
     if (!name) {
       setFeedback("Please enter your name.", "error");
@@ -46,10 +52,13 @@ if (form) {
       name,
       email,
       town,
+      company,
+      formStartedAt,
       updatesConsent: true,
       region: "Long Island",
       source: "perx-waitlist-site",
       submittedAt: new Date().toISOString(),
+      userAgent: window.navigator.userAgent,
     };
 
     submitBtn.disabled = true;
@@ -64,17 +73,20 @@ if (form) {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error("Request failed");
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "Request failed");
       }
 
-      setFeedback("You are on the waitlist. We will email you updates.", "success");
-      form.reset();
-    } catch (error) {
       setFeedback(
-        "Could not submit right now. Please try again in a moment.",
-        "error"
+        result.message || "Check your inbox to confirm your spot on the waitlist.",
+        "success"
       );
+      form.reset();
+      form.formStartedAt.value = String(Date.now());
+    } catch (error) {
+      setFeedback(error.message || "Could not submit right now. Please try again in a moment.", "error");
     } finally {
       submitBtn.disabled = false;
     }

@@ -120,6 +120,14 @@ h1 {
   gap: 0.6rem;
 }
 
+.trap-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 .waitlist-form label {
   font-size: 0.83rem;
   color: #4f4a61;
