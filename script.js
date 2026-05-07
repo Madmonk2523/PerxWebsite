@@ -67,16 +67,24 @@ if (form) {
     try {
       const response = await fetch(WAITLIST_ENDPOINT, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
+      const rawText = await response.text();
+      let result = null;
 
-      if (!response.ok || !result.ok) {
-        throw new Error(result.message || "Request failed");
+      try {
+        result = JSON.parse(rawText);
+      } catch (parseError) {
+        result = null;
+      }
+
+      if (!response.ok) {
+        throw new Error("Could not submit right now. Please check the Apps Script deployment access settings.");
+      }
+
+      if (!result || !result.ok) {
+        throw new Error((result && result.message) || "Could not submit right now. Please try again in a moment.");
       }
 
       setFeedback(
