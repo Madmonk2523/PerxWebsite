@@ -1,11 +1,13 @@
 const WAITLIST_SHEET_NAME = 'PERX Waitlist';
-const PENDING_SHEET_NAME = 'PERX Pending Verifications';
+const LEGACY_PENDING_SHEET_NAME = 'PERX Pending Verifications';
 const SPREADSHEET_ID = '19M0jKEKPFIeIeI5NIVIryoYY-cfuCF0CgqXEAfgrlrs';
 const ADMIN_EMAIL = 'chasemallor@gmail.com';
 const EMAIL_FROM_NAME = 'PERX';
 const MIN_FORM_FILL_MS = 3000;
 const VERIFICATION_TTL_HOURS = 72;
 const TIMEZONE = 'America/New_York';
+const PENDING_TOKEN_PREFIX = 'perx_pending_token_';
+const PENDING_EMAIL_PREFIX = 'perx_pending_email_';
 
 function doPost(e) {
   try {
@@ -56,11 +58,10 @@ function doGet(e) {
 
 function processSignup_(payload) {
   const spreadsheet = getSpreadsheet_();
+  removeLegacyPendingSheet_(spreadsheet);
   const waitlistSheet = getOrCreateWaitlistSheet_(spreadsheet);
-  const pendingSheet = getOrCreatePendingSheet_(spreadsheet);
   const email = normalizeEmail_(payload.email);
   const name = String(payload.name || '').trim();
-  const zipCode = String(payload.zipCode || '').trim();
   const company = String(payload.company || '').trim();
   const formStartedAt = Number(payload.formStartedAt || 0);
   const elapsedMs = formStartedAt ? Date.now() - formStartedAt : 0;
@@ -77,10 +78,6 @@ function processSignup_(payload) {
     return { ok: false, message: 'Enter a valid email address.' };
   }
 
-  if (zipCode && !/^\d{5}(?:-\d{4})?$/.test(zipCode)) {
-    return { ok: false, message: 'Enter a valid US ZIP code.' };
-  }
-
   if (elapsedMs > 0 && elapsedMs < MIN_FORM_FILL_MS) {
     return { ok: false, message: 'Please wait a moment and try again.' };
   }
@@ -94,14 +91,10 @@ function processSignup_(payload) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + VERIFICATION_TTL_HOURS * 60 * 60 * 1000);
 
-  upsertPendingSignup_(pendingSheet, {
+  upsertPendingSignup_({
     createdAt: now,
     name,
     email,
-    zipCode,
-    region: String(payload.region || 'Long Island').trim(),
-    source: String(payload.source || '').trim(),
-    userAgent: String(payload.userAgent || '').slice(0, 180),
     token,
     expiresAt,
   });
@@ -116,24 +109,16 @@ function processSignup_(payload) {
 
 function verifyPendingSignup_(token) {
   const spreadsheet = getSpreadsheet_();
+  removeLegacyPendingSheet_(spreadsheet);
   const waitlistSheet = getOrCreateWaitlistSheet_(spreadsheet);
-  const pendingSheet = getOrCreatePendingSheet_(spreadsheet);
-  const pending = findPendingRowByToken_(pendingSheet, token);
+  const pending = findPendingByToken_(token);
 
   if (!pending) {
     return { ok: false, message: 'This verification link is invalid or has already been used.' };
   }
 
-  if (pending.status === 'VERIFIED') {
-    return { ok: true, message: 'Your email is already verified. You are on the waitlist.' };
-  }
-
-  if (pending.status !== 'PENDING') {
-    return { ok: false, message: 'This verification link is no longer active. Submit the form again for a new link.' };
-  }
-
   if (pending.expiresAt && pending.expiresAt.getTime() < Date.now()) {
-    updatePendingStatus_(pendingSheet, pending.row, 'EXPIRED', '');
+    removePendingSignup_(token, pending.email);
     return { ok: false, message: 'This verification link has expired. Submit the form again for a new link.' };
   }
 
@@ -143,15 +128,12 @@ function verifyPendingSignup_(token) {
       formatEasternTime_(new Date()),
       pending.name,
       pending.email,
-      pending.zipCode,
-      pending.region,
-      pending.source,
     ]);
 
     notifyAdmin_(pending.name, pending.email);
   }
 
-  updatePendingStatus_(pendingSheet, pending.row, 'VERIFIED', formatEasternTime_(new Date()));
+  removePendingSignup_(token, pending.email);
   return { ok: true, message: 'Email verified. Your waitlist spot is confirmed.' };
 }
 
@@ -231,38 +213,9 @@ function getOrCreateWaitlistSheet_(spreadsheet) {
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet(WAITLIST_SHEET_NAME);
-    sheet.appendRow([
-      'verifiedAt',
-      'name',
-      'email',
-      'zipCode',
-      'region',
-      'source',
-    ]);
   }
 
-  return sheet;
-}
-
-function getOrCreatePendingSheet_(spreadsheet) {
-  let sheet = spreadsheet.getSheetByName(PENDING_SHEET_NAME);
-
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(PENDING_SHEET_NAME);
-    sheet.appendRow([
-      'createdAt',
-      'name',
-      'email',
-      'zipCode',
-      'region',
-      'source',
-      'userAgent',
-      'token',
-      'status',
-      'verifiedAt',
-      'expiresAt',
-    ]);
-  }
+  trimWaitlistSheetToCoreColumns_(sheet);
 
   return sheet;
 }
@@ -283,76 +236,78 @@ function findRowByEmail_(sheet, email) {
   return null;
 }
 
-function upsertPendingSignup_(sheet, signup) {
-  const existing = findPendingRowByEmail_(sheet, signup.email);
-  const rowValues = [
-    formatEasternTime_(signup.createdAt),
-    signup.name,
-    signup.email,
-    signup.zipCode,
-    signup.region,
-    signup.source,
-    signup.userAgent,
-    signup.token,
-    'PENDING',
-    '',
-    formatEasternTime_(signup.expiresAt),
-  ];
+function upsertPendingSignup_(signup) {
+  const properties = PropertiesService.getScriptProperties();
+  const emailKey = buildPendingEmailKey_(signup.email);
+  const existingToken = properties.getProperty(emailKey);
 
-  if (existing) {
-    sheet.getRange(existing, 1, 1, rowValues.length).setValues([rowValues]);
-    return existing;
+  if (existingToken) {
+    properties.deleteProperty(buildPendingTokenKey_(existingToken));
   }
 
-  sheet.appendRow(rowValues);
-  return sheet.getLastRow();
+  const payload = {
+    name: signup.name,
+    email: signup.email,
+    expiresAt: signup.expiresAt.toISOString(),
+  };
+
+  properties.setProperty(buildPendingTokenKey_(signup.token), JSON.stringify(payload));
+  properties.setProperty(emailKey, signup.token);
 }
 
-function findPendingRowByEmail_(sheet, email) {
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
+function findPendingByToken_(token) {
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(buildPendingTokenKey_(token));
+  if (!raw) {
     return null;
   }
 
-  const values = sheet.getRange(2, 3, lastRow - 1, 1).getValues();
-  for (let index = 0; index < values.length; index += 1) {
-    if (normalizeEmail_(values[index][0]) === email) {
-      return index + 2;
-    }
-  }
-
-  return null;
-}
-
-function findPendingRowByToken_(sheet, token) {
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
     return null;
   }
 
-  const values = sheet.getRange(2, 1, lastRow - 1, 11).getValues();
-  for (let index = 0; index < values.length; index += 1) {
-    const row = values[index];
-    if (String(row[7] || '').trim() === token) {
-      return {
-        row: index + 2,
-        name: String(row[1] || '').trim(),
-        email: normalizeEmail_(row[2]),
-        zipCode: String(row[3] || '').trim(),
-        region: String(row[4] || '').trim(),
-        source: String(row[5] || '').trim(),
-        status: String(row[8] || '').trim().toUpperCase(),
-        expiresAt: parseSheetDate_(row[10]),
-      };
-    }
-  }
-
-  return null;
+  return {
+    name: String(parsed.name || '').trim(),
+    email: normalizeEmail_(parsed.email),
+    expiresAt: parseSheetDate_(parsed.expiresAt),
+  };
 }
 
-function updatePendingStatus_(sheet, rowNumber, status, verifiedAt) {
-  sheet.getRange(rowNumber, 9).setValue(status);
-  sheet.getRange(rowNumber, 10).setValue(verifiedAt || '');
+function removePendingSignup_(token, email) {
+  const properties = PropertiesService.getScriptProperties();
+  properties.deleteProperty(buildPendingTokenKey_(token));
+  if (email) {
+    properties.deleteProperty(buildPendingEmailKey_(email));
+  }
+}
+
+function buildPendingTokenKey_(token) {
+  return PENDING_TOKEN_PREFIX + String(token || '').trim();
+}
+
+function buildPendingEmailKey_(email) {
+  return PENDING_EMAIL_PREFIX + normalizeEmail_(email);
+}
+
+function trimWaitlistSheetToCoreColumns_(sheet) {
+  const requiredColumns = 3;
+  const maxColumns = sheet.getMaxColumns();
+
+  if (maxColumns > requiredColumns) {
+    sheet.deleteColumns(requiredColumns + 1, maxColumns - requiredColumns);
+  }
+
+  sheet.getRange(1, 1, 1, requiredColumns).setValues([['verifiedAt', 'name', 'email']]);
+}
+
+function removeLegacyPendingSheet_(spreadsheet) {
+  const legacySheet = spreadsheet.getSheetByName(LEGACY_PENDING_SHEET_NAME);
+  if (legacySheet) {
+    spreadsheet.deleteSheet(legacySheet);
+  }
 }
 
 function createVerificationToken_() {
