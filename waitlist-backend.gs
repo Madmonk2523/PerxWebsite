@@ -148,7 +148,7 @@ function verifyPendingSignup_(token) {
       pending.source,
     ]);
 
-    notifyAdmin_(pending.name, pending.email, pending.zipCode);
+    notifyAdmin_(pending.name, pending.email);
   }
 
   updatePendingStatus_(pendingSheet, pending.row, 'VERIFIED', formatEasternTime_(new Date()));
@@ -396,7 +396,7 @@ function sendVerificationEmail_(email, name, token) {
   });
 }
 
-function notifyAdmin_(name, email, zipCode) {
+function notifyAdmin_(name, email) {
   if (!ADMIN_EMAIL || ADMIN_EMAIL === 'your-email@example.com') {
     return;
   }
@@ -404,7 +404,7 @@ function notifyAdmin_(name, email, zipCode) {
   MailApp.sendEmail({
     to: ADMIN_EMAIL,
     subject: 'New verified PERX waitlist member',
-    body: 'Name: ' + name + '\nEmail: ' + email + '\nZIP code: ' + zipCode,
+    body: 'Name: ' + name + '\nEmail: ' + email,
     name: EMAIL_FROM_NAME,
   });
 }
