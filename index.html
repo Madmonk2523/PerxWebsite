@@ -31,6 +31,10 @@
           unlocks waiting nearby. Join the waitlist for first access and early
           updates as it comes to life.
         </p>
+        <div class="verification-note" role="status" aria-live="polite">
+          <p><strong>Verified access only:</strong> We send a confirmation link to your email.</p>
+          <p>Your spot is saved after you verify, which helps keep fake signups out.</p>
+        </div>
 
         <form id="waitlistForm" class="waitlist-form" novalidate>
           <div class="trap-field" aria-hidden="true">
@@ -62,12 +66,19 @@
             placeholder="you@email.com"
           />
 
-          <label for="town">Town (optional)</label>
-          <input id="town" name="town" type="text" autocomplete="address-level2" placeholder="Your town" />
+          <label for="zipCode">ZIP code (optional)</label>
+          <input
+            id="zipCode"
+            name="zipCode"
+            type="text"
+            autocomplete="postal-code"
+            inputmode="numeric"
+            placeholder="e.g. 11743"
+          />
 
           <p class="disclaimer">
-            By joining, you agree to receive waitlist and launch email updates from
-            PERX.
+            By joining, you agree to receive waitlist and launch updates from PERX.
+            We only add confirmed emails to the list.
           </p>
 
           <button type="submit" id="submitBtn">Join Waitlist</button>

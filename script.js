@@ -1,4 +1,4 @@
-const WAITLIST_ENDPOINT = "https://script.google.com/macros/s/AKfycbx3Kv1K8UnnTb9BzlmaEziBdl4VycyN4dFFclEon0jeNWluOZl9x0rY2dd40pQur1Be/exec";
+const WAITLIST_ENDPOINT = "https://script.google.com/macros/s/AKfycbyT7qa_vw9bkI_ULiEdAXqjJGHsBuxmciTn2f_keZ3caJfkDJkcpqjyYh0p54ZjzpgA/exec";
 
 const form = document.getElementById("waitlistForm");
 const feedback = document.getElementById("formFeedback");
@@ -20,6 +20,13 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function isValidZipCode(zipCode) {
+  if (!zipCode) {
+    return true;
+  }
+  return /^\d{5}(?:-\d{4})?$/.test(zipCode);
+}
+
 function delay(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -36,7 +43,7 @@ function submitViaJsonpOnce(payload) {
       callback: callbackName,
       name: payload.name,
       email: payload.email,
-      town: payload.town,
+      zipCode: payload.zipCode,
       company: payload.company,
       formStartedAt: String(payload.formStartedAt),
       region: payload.region,
@@ -98,7 +105,7 @@ if (form) {
 
     const name = form.name.value.trim();
     const email = form.email.value.trim().toLowerCase();
-    const town = form.town.value.trim();
+    const zipCode = form.zipCode.value.trim();
     const company = form.company.value.trim();
     const formStartedAt = Number(form.formStartedAt.value || 0);
 
@@ -109,6 +116,11 @@ if (form) {
 
     if (!isValidEmail(email)) {
       setFeedback("Please enter a valid email.", "error");
+      return;
+    }
+
+    if (!isValidZipCode(zipCode)) {
+      setFeedback("Please enter a valid US ZIP code (e.g. 11743).", "error");
       return;
     }
 
@@ -123,7 +135,7 @@ if (form) {
     const payload = {
       name,
       email,
-      town,
+      zipCode,
       company,
       formStartedAt,
       updatesConsent: true,
@@ -142,7 +154,10 @@ if (form) {
         throw new Error(result.message || "Could not submit right now. Please try again.");
       }
 
-      setFeedback(result.message || "Check your inbox to confirm your spot.", "success");
+      setFeedback(
+        result.message || "Check your inbox and verify your email to lock in your spot.",
+        "success"
+      );
       form.reset();
       form.formStartedAt.value = String(Date.now());
     } catch (error) {

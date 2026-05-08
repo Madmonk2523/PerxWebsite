@@ -41,7 +41,8 @@
 3. You should see: "Check your email to confirm your spot on the waitlist."
 4. Check your email for a confirmation link
 5. Click it
-6. Go back to your Google Sheet—you should see the entry with status `verified`
+6. Go back to your Google Sheet—you should see the entry in `PERX Waitlist`
+7. In `PERX Pending Verifications`, the row status should change to `VERIFIED`
 
 ## How to Send Updates to Everyone
 1. Go back to Apps Script
@@ -60,6 +61,8 @@ sendWaitlistBroadcast(
 
 ## What's Included
 ✅ Double opt-in email verification (prevents fake emails)
+✅ New signup alert email only after verification
+✅ Waitlist rows are added only after verification
 ✅ Automatic duplicate blocking
 ✅ Bot honeypot (hidden spam field)
 ✅ Form timing checks

@@ -1,12 +1,12 @@
 :root {
-  --bg: #f6f3ff;
-  --surface: rgba(255, 255, 255, 0.72);
-  --surface-strong: rgba(255, 255, 255, 0.88);
-  --stroke: rgba(70, 53, 116, 0.1);
-  --text: #181423;
-  --muted: #625d74;
-  --accent: #8b72e8;
-  --accent-strong: #745ed1;
+  --bg: #f6f8f3;
+  --surface: rgba(255, 255, 255, 0.76);
+  --surface-strong: rgba(255, 255, 255, 0.92);
+  --stroke: rgba(52, 66, 40, 0.14);
+  --text: #172112;
+  --muted: #5f6f52;
+  --accent: #2f7d5a;
+  --accent-strong: #256849;
   --success: #1d8b57;
 }
 
@@ -23,9 +23,9 @@ body {
 body {
   font-family: "Manrope", "Segoe UI", sans-serif;
   color: var(--text);
-  background: radial-gradient(circle at 18% 12%, rgba(161, 135, 244, 0.18) 0%, transparent 34%),
-    radial-gradient(circle at 82% 88%, rgba(184, 168, 255, 0.18) 0%, transparent 32%),
-    linear-gradient(180deg, #fcfbff 0%, #f3efff 100%);
+  background: radial-gradient(circle at 18% 10%, rgba(142, 204, 163, 0.26) 0%, transparent 33%),
+    radial-gradient(circle at 82% 86%, rgba(209, 233, 163, 0.24) 0%, transparent 30%),
+    linear-gradient(180deg, #fbfdf8 0%, #eff6e8 100%);
   overflow-x: hidden;
 }
 
@@ -40,7 +40,7 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(43, 29, 82, 0.06) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(40, 58, 28, 0.06) 1px, transparent 1px);
   background-size: 3px 3px;
   opacity: 0.4;
 }
@@ -58,14 +58,14 @@ body {
 .orb-a {
   top: -8rem;
   left: -7rem;
-  background: rgba(162, 135, 244, 0.22);
+  background: rgba(126, 191, 148, 0.26);
   animation: drift 15s ease-in-out infinite;
 }
 
 .orb-b {
   right: -6rem;
   bottom: -8rem;
-  background: rgba(202, 191, 255, 0.26);
+  background: rgba(198, 222, 137, 0.24);
   animation: drift 18s ease-in-out infinite reverse;
 }
 
@@ -74,9 +74,9 @@ body {
   border: 1px solid var(--stroke);
   border-radius: 1.5rem;
   padding: 1.5rem;
-  background: linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(247, 243, 255, 0.78));
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.93), rgba(241, 248, 230, 0.76));
   backdrop-filter: blur(18px);
-  box-shadow: 0 18px 60px rgba(110, 92, 169, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.65);
+  box-shadow: 0 18px 60px rgba(69, 101, 47, 0.14), 0 0 0 1px rgba(255, 255, 255, 0.68);
 }
 
 .eyebrow {
@@ -97,12 +97,12 @@ h1 {
 
 .logo-x {
   color: var(--accent-strong);
-  text-shadow: 0 0 16px rgba(139, 114, 232, 0.22);
+  text-shadow: 0 0 16px rgba(47, 125, 90, 0.28);
 }
 
 .tagline {
   margin: 0.45rem 0 0;
-  color: #241d35;
+  color: #1b2914;
   font-weight: 600;
   font-size: clamp(1rem, 4vw, 1.15rem);
 }
@@ -112,6 +112,25 @@ h1 {
   color: var(--muted);
   font-size: 0.94rem;
   line-height: 1.45;
+}
+
+.verification-note {
+  margin-top: 0.95rem;
+  border: 1px solid rgba(47, 125, 90, 0.26);
+  border-radius: 0.95rem;
+  padding: 0.72rem 0.82rem;
+  background: linear-gradient(130deg, rgba(230, 248, 235, 0.92), rgba(242, 250, 231, 0.84));
+}
+
+.verification-note p {
+  margin: 0;
+  color: #335b39;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.verification-note p + p {
+  margin-top: 0.25rem;
 }
 
 .waitlist-form {
@@ -130,7 +149,7 @@ h1 {
 
 .waitlist-form label {
   font-size: 0.83rem;
-  color: #4f4a61;
+  color: #425538;
   font-weight: 600;
 }
 
@@ -152,14 +171,14 @@ h1 {
 }
 
 .waitlist-form input:focus {
-  border-color: rgba(139, 114, 232, 0.45);
+  border-color: rgba(47, 125, 90, 0.5);
   background: var(--surface-strong);
-  box-shadow: 0 0 0 4px rgba(139, 114, 232, 0.12);
+  box-shadow: 0 0 0 4px rgba(47, 125, 90, 0.16);
 }
 
 .disclaimer {
   margin: 0.1rem 0 0;
-  color: #777289;
+  color: #627359;
   font-size: 0.8rem;
   line-height: 1.45;
 }
@@ -167,9 +186,9 @@ h1 {
 button {
   margin-top: 0.2rem;
   width: 100%;
-  border: 1px solid rgba(139, 114, 232, 0.34);
+  border: 1px solid rgba(43, 117, 83, 0.36);
   border-radius: 999px;
-  background: linear-gradient(120deg, #7f63e6, #9a88ea);
+  background: linear-gradient(120deg, #2f7d5a, #3ea56f);
   color: #fff;
   font-weight: 700;
   font-size: 0.97rem;
@@ -180,7 +199,7 @@ button {
 
 button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(124, 85, 230, 0.2);
+  box-shadow: 0 12px 24px rgba(47, 125, 90, 0.24);
 }
 
 button:disabled {
@@ -200,7 +219,7 @@ button:disabled {
 }
 
 .form-feedback.error {
-  color: #ffb0b0;
+  color: #ab2e2e;
 }
 
 .microcopy {
