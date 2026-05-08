@@ -163,24 +163,30 @@ h1 {
 .about-grid {
   margin-top: 1rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  gap: 0.1rem;
 }
 
 .about-item {
-  border: 1px solid rgba(168, 142, 255, 0.34);
-  border-radius: 1rem;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(243, 236, 255, 0.84));
-  padding: 0.9rem;
+  display: grid;
+  grid-template-columns: 2.15rem 1fr;
+  gap: 0.72rem;
+  align-items: start;
+  padding: 0.9rem 0.2rem;
+  border-bottom: 1px solid rgba(152, 125, 239, 0.26);
 }
 
-.about-item h3 {
+.about-item:last-child {
+  border-bottom: 0;
+}
+
+.about-copy h3 {
   margin: 0;
   font-size: 0.98rem;
   color: #5d44bf;
 }
 
-.about-item p {
+.about-copy p {
   margin: 0.35rem 0 0;
   color: #5c5571;
   font-size: 0.92rem;
@@ -194,8 +200,8 @@ h1 {
 }
 
 .about-icon {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.95rem;
+  height: 1.95rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -208,19 +214,15 @@ h1 {
 }
 
 .map-pin-icon {
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  background: conic-gradient(from 45deg, #ea4335 0 25%, #fbbc05 25% 50%, #34a853 50% 75%, #4285f4 75% 100%);
-  box-shadow: 0 0 18px rgba(112, 86, 206, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(119, 94, 212, 0.22);
 }
 
-.map-pin-core {
-  width: 0.68rem;
-  height: 0.68rem;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 2px solid #4285f4;
-  transform: rotate(45deg);
+.map-pin-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: block;
 }
 
 .about-card .coming-soon-hype {
@@ -399,8 +401,8 @@ button:disabled {
   }
 
   .about-icon {
-    width: 1.55rem;
-    height: 1.55rem;
+    width: 1.78rem;
+    height: 1.78rem;
   }
 
   .orb {
