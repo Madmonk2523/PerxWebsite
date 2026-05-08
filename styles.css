@@ -234,6 +234,23 @@ h1 {
   text-shadow: 0 0 14px rgba(145, 113, 255, 0.2);
 }
 
+.contact-cta {
+  margin: 0.65rem 0 0;
+  color: #5b4c87;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.contact-cta a {
+  color: #6242d1;
+  font-weight: 700;
+  text-decoration-thickness: 1.5px;
+}
+
+.about-contact-cta {
+  color: #5a4e82;
+}
+
 .verification-note {
   margin-top: 0.95rem;
   border: 1px solid rgba(139, 114, 232, 0.26);
