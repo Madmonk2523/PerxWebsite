@@ -162,17 +162,21 @@ h1 {
 
 .about-grid {
   margin-top: 1rem;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid rgba(152, 125, 239, 0.26);
 }
 
 .about-item {
-  display: grid;
-  grid-template-columns: 2.15rem 1fr;
+  display: flex;
+  flex-direction: row;
   gap: 0.72rem;
   align-items: start;
-  padding: 0.9rem 0.2rem;
+  padding: 0.95rem 0.2rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   border-bottom: 1px solid rgba(152, 125, 239, 0.26);
 }
 
