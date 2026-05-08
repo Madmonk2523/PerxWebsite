@@ -1,4 +1,4 @@
-const WAITLIST_ENDPOINT = "https://script.google.com/macros/s/AKfycbwSHx1EYnEzYSg_b8tmyo6IS1PJzsDfKZnEydwFNplLmRQyup79MU4KcrUIWCCZUPRM/exec";
+const WAITLIST_ENDPOINT = "https://script.google.com/macros/s/AKfycbx3Kv1K8UnnTb9BzlmaEziBdl4VycyN4dFFclEon0jeNWluOZl9x0rY2dd40pQur1Be/exec";
 
 const form = document.getElementById("waitlistForm");
 const feedback = document.getElementById("formFeedback");
