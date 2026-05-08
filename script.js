@@ -20,13 +20,6 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function isValidZipCode(zipCode) {
-  if (!zipCode) {
-    return true;
-  }
-  return /^\d{5}(?:-\d{4})?$/.test(zipCode);
-}
-
 function delay(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -43,7 +36,6 @@ function submitViaJsonpOnce(payload) {
       callback: callbackName,
       name: payload.name,
       email: payload.email,
-      zipCode: payload.zipCode,
       company: payload.company,
       formStartedAt: String(payload.formStartedAt),
       region: payload.region,
@@ -105,7 +97,6 @@ if (form) {
 
     const name = form.name.value.trim();
     const email = form.email.value.trim().toLowerCase();
-    const zipCode = form.zipCode.value.trim();
     const company = form.company.value.trim();
     const formStartedAt = Number(form.formStartedAt.value || 0);
 
@@ -116,11 +107,6 @@ if (form) {
 
     if (!isValidEmail(email)) {
       setFeedback("Please enter a valid email.", "error");
-      return;
-    }
-
-    if (!isValidZipCode(zipCode)) {
-      setFeedback("Please enter a valid US ZIP code (e.g. 11743).", "error");
       return;
     }
 
@@ -135,7 +121,6 @@ if (form) {
     const payload = {
       name,
       email,
-      zipCode,
       company,
       formStartedAt,
       updatesConsent: true,
