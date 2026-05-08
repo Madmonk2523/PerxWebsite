@@ -1,4 +1,17 @@
+# PERX Robots Configuration
 User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: *.pdf$
+Allow: *.pdf
+Allow: *.css
+Allow: *.js
+
+Crawl-delay: 0
+User-agent: AdsBot-Google
+Allow: /
+
+User-agent: Googlebot
 Allow: /
 
 Sitemap: https://joinperx.com/sitemap.xml
