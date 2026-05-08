@@ -3,6 +3,10 @@ const WAITLIST_ENDPOINT = "https://script.google.com/macros/s/AKfycbyq2YVCOdKC6T
 const form = document.getElementById("waitlistForm");
 const feedback = document.getElementById("formFeedback");
 const submitBtn = document.getElementById("submitBtn");
+const aboutPerxBtn = document.getElementById("aboutPerxBtn");
+const backToWaitlistBtn = document.getElementById("backToWaitlistBtn");
+const waitlistSection = document.getElementById("waitlist");
+const aboutPerxSection = document.getElementById("aboutPerx");
 
 if (form && form.formStartedAt) {
   form.formStartedAt.value = String(Date.now());
@@ -24,6 +28,30 @@ function delay(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
+}
+
+function showAboutPage() {
+  if (!waitlistSection || !aboutPerxSection) {
+    return;
+  }
+
+  waitlistSection.classList.add("page-hidden");
+  waitlistSection.setAttribute("aria-hidden", "true");
+  aboutPerxSection.classList.remove("page-hidden");
+  aboutPerxSection.setAttribute("aria-hidden", "false");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showWaitlistPage() {
+  if (!waitlistSection || !aboutPerxSection) {
+    return;
+  }
+
+  aboutPerxSection.classList.add("page-hidden");
+  aboutPerxSection.setAttribute("aria-hidden", "true");
+  waitlistSection.classList.remove("page-hidden");
+  waitlistSection.setAttribute("aria-hidden", "false");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function submitViaJsonpOnce(payload) {
@@ -154,4 +182,12 @@ if (form) {
       submitBtn.disabled = false;
     }
   });
+}
+
+if (aboutPerxBtn) {
+  aboutPerxBtn.addEventListener("click", showAboutPage);
+}
+
+if (backToWaitlistBtn) {
+  backToWaitlistBtn.addEventListener("click", showWaitlistPage);
 }
