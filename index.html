@@ -3,200 +3,327 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>PERX | Long Island Early Access Waitlist</title>
-    <meta name="description" content="Join the PERX Long Island waitlist for first access to an innovative mobile app that rewards everyday moments. Free early access and exclusive launch updates." />
-    <meta name="keywords" content="PERX, Long Island app, rewards app, mobile app waitlist, early access, location-based rewards" />
-    <meta name="author" content="PERX" />
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-    <meta name="theme-color" content="#8b72e8" />
+    <title>Join PERX | Official Business Signup Portal</title>
+    <meta
+      name="description"
+      content="Official PERX business onboarding portal. Verify your business, sign the participation agreement electronically, and submit in minutes."
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#f5f7fb" />
     <link rel="canonical" href="https://joinperx.com/" />
-    
-    <!-- Open Graph / Social Media -->
+
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://joinperx.com/" />
-    <meta property="og:title" content="PERX | Long Island Early Access Waitlist" />
-    <meta property="og:description" content="Join the PERX Long Island waitlist for first access to an innovative mobile app that rewards everyday moments." />
-    <meta property="og:site_name" content="PERX" />
-    <meta property="og:locale" content="en_US" />
-    
-    <!-- Twitter Card -->
+    <meta property="og:title" content="Join PERX | Official Business Signup Portal" />
+    <meta
+      property="og:description"
+      content="Complete PERX business onboarding online with verification and electronic signature."
+    />
+
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://joinperx.com/" />
-    <meta property="twitter:title" content="PERX | Long Island Early Access Waitlist" />
-    <meta property="twitter:description" content="Join the PERX Long Island waitlist for first access to an innovative mobile app that rewards everyday moments." />
-    
-    <!-- Additional SEO -->
-    <meta name="language" content="English" />
-    <meta name="revisit-after" content="7 days" />
-    <meta name="copyright" content="PERX" />
-    
+    <meta property="twitter:title" content="Join PERX | Official Business Signup Portal" />
+    <meta
+      property="twitter:description"
+      content="Complete PERX business onboarding online with verification and electronic signature."
+    />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://script.google.com" />
+    <link rel="dns-prefetch" href="https://api.ipify.org" />
+    <link rel="dns-prefetch" href="https://ipapi.co" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="noise" aria-hidden="true"></div>
-    <div class="orb orb-a" aria-hidden="true"></div>
-    <div class="orb orb-b" aria-hidden="true"></div>
+    <div class="bg-grid" aria-hidden="true"></div>
+    <div class="halo halo-a" aria-hidden="true"></div>
+    <div class="halo halo-b" aria-hidden="true"></div>
 
     <main class="shell">
-      <section class="waitlist-card" id="waitlist">
-        <p class="eyebrow">LONG ISLAND WAITLIST</p>
-        <h1><span class="logo-x">P</span>ERX</h1>
-        <p class="tagline">A rewarding new app is coming to your neighborhood.</p>
-        <p class="description">
-          As you move through Long Island, PERX turns everyday moments into subtle
-          unlocks waiting nearby. Join the waitlist for first access and early
-          updates as it comes to life.
+      <section class="panel hero-panel" id="landingPanel" aria-labelledby="heroTitle">
+        <p class="eyebrow">Official PERX Partner Onboarding</p>
+        <h1 id="heroTitle">Join PERX</h1>
+        <p class="lead">
+          Become a PERX partner and attract new customers by offering exclusive rewards to our
+          community.
         </p>
-        <p class="coming-soon-hype">More is coming soon. Big drops, new partners, and surprise unlocks are on the way.</p>
-        <p class="contact-cta">
-          Contact: <a href="mailto:chasemallor@gmail.com">chasemallor@gmail.com</a>.<br />
-          If your business wants to be a part of PERX, feel free to email me.
+        <p class="support-copy">Joining only takes a few minutes.</p>
+        <button type="button" id="startOnboardingBtn" class="primary">Become a PERX Partner</button>
+        <p class="subtle-link-row">
+          Need policy details first?
+          <a href="privacy-policy.html">Review Privacy Policy</a>
         </p>
-        <p class="legal-links">
-          Read our <a href="privacy-policy.html">Privacy Policy</a>.
-        </p>
-
-        <form id="waitlistForm" class="waitlist-form" novalidate>
-          <div class="trap-field" aria-hidden="true">
-            <label for="company">Company</label>
-            <input
-              id="company"
-              name="company"
-              type="text"
-              tabindex="-1"
-              autocomplete="off"
-            />
-          </div>
-
-          <input id="formStartedAt" name="formStartedAt" type="hidden" value="" />
-
-          <label for="name">Name</label>
-          <input id="name" name="name" type="text" required autocomplete="name" placeholder="Your name" />
-
-          <label for="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autocomplete="email"
-            inputmode="email"
-            autocapitalize="none"
-            spellcheck="false"
-            placeholder="you@email.com"
-          />
-
-          <p class="disclaimer">
-            By joining, you agree to receive waitlist and launch updates from PERX.
-            We only add confirmed emails to the list.
-          </p>
-
-          <button type="submit" id="submitBtn">Join Waitlist</button>
-          <button type="button" class="secondary-btn" id="aboutPerxBtn">What is Perx?</button>
-          <p class="form-feedback" id="formFeedback" aria-live="polite"></p>
-        </form>
-
       </section>
 
-      <section class="about-card page-hidden" id="aboutPerx" aria-hidden="true">
-        <p class="eyebrow">WHAT IS PERX?</p>
-        <h2>The future of rewards is nearby.</h2>
-        <p class="about-intro">
-          PERX is a location-powered rewards app that helps you discover nearby rewards and discounts from businesses around you. As you move through your
-          day, PERX surfaces rewards tied to real places in Long Island!
-        </p>
-        <p class="about-intro">
-          Whether it&apos;s your favorite coffee shop, a local restaurant, or a nearby
-          Barbershop, PERX makes discovering and redeeming local rewards feel effortless.
-        </p>
-        <p class="about-intro">
-          No coupons. No punch cards. No searching. Just rewards built into everyday life.
-        </p>
+      <section class="panel wizard-panel is-hidden" id="wizardPanel" aria-hidden="true">
+        <header class="wizard-header">
+          <p class="eyebrow">Business Onboarding</p>
+          <h2>Official Business Participation Signup</h2>
+          <p class="step-counter" id="stepCounter">Step 1 of 5</p>
+          <div class="progress-track" aria-hidden="true">
+            <span id="progressFill"></span>
+          </div>
+        </header>
 
-        <div class="about-grid">
-          <article class="about-item">
-            <span class="about-icon" aria-hidden="true">★</span>
-            <div class="about-copy">
-              <h3>How it works</h3>
-              <p>
-                Open the app, see what&apos;s active nearby, and unlock rewards from
-                participating businesses in your area through everyday movement. PERX is
-                designed to make local discovery simple, seamless, and rewarding.
-              </p>
-            </div>
-          </article>
+        <form id="onboardingForm" novalidate>
+          <input type="hidden" id="formStartedAt" name="formStartedAt" value="" />
+          <input type="hidden" id="trapField" name="trapField" value="" />
 
-          <article class="about-item">
-            <span class="about-icon" aria-hidden="true">🏪</span>
-            <div class="about-copy">
-              <h3>Why people join</h3>
-              <p>
-                PERX helps people discover new local spots, save money at places they
-                already visit or have never been before, and unlock rewards throughout
-                their normal routine.
-              </p>
+          <section class="step" data-step="1">
+            <h3>Business Information</h3>
+            <div class="field-grid two-col">
+              <label>
+                Business Name
+                <input type="text" name="businessName" required autocomplete="organization" />
+              </label>
+              <label>
+                Business Phone Number
+                <input type="tel" name="businessPhone" required autocomplete="tel" />
+              </label>
             </div>
-          </article>
+            <div class="field-grid one-col">
+              <label>
+                Business Address
+                <input type="text" name="businessAddress" required autocomplete="street-address" />
+              </label>
+            </div>
+            <div class="field-grid three-col">
+              <label>
+                City
+                <input type="text" name="city" required autocomplete="address-level2" />
+              </label>
+              <label>
+                State
+                <input type="text" name="state" required maxlength="2" autocomplete="address-level1" />
+              </label>
+              <label>
+                ZIP Code
+                <input type="text" name="zipCode" required inputmode="numeric" maxlength="10" autocomplete="postal-code" />
+              </label>
+            </div>
+            <div class="field-grid two-col">
+              <label>
+                Business Email Address
+                <input type="email" name="businessEmail" required autocomplete="email" />
+              </label>
+              <label>
+                Website (Optional)
+                <input type="url" name="website" placeholder="https://yourbusiness.com" autocomplete="url" />
+              </label>
+            </div>
+            <div class="field-grid two-col">
+              <label>
+                Business Category
+                <input type="text" name="businessCategory" required placeholder="Restaurant, Retail, Services" />
+              </label>
+              <label>
+                Owner / Authorized Representative Full Name
+                <input type="text" name="ownerName" required autocomplete="name" />
+              </label>
+            </div>
+            <div class="field-grid two-col">
+              <label>
+                Job Title
+                <input type="text" name="jobTitle" required autocomplete="organization-title" />
+              </label>
+              <label>
+                Optional Notes
+                <input type="text" name="notes" />
+              </label>
+            </div>
+          </section>
 
-          <article class="about-item">
-            <span class="about-icon map-pin-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <path fill="#ea4335" d="M12 2c-3.86 0-7 3.14-7 7 0 5.14 7 13 7 13s7-7.86 7-13c0-3.86-3.14-7-7-7z"/>
-                <circle cx="12" cy="9" r="3.1" fill="#ffffff"/>
-                <path fill="#4285f4" d="M12 5.9a3.1 3.1 0 0 1 2.68 1.55A3.1 3.1 0 0 0 12 4.8a3.1 3.1 0 0 0-2.68 1.55A3.1 3.1 0 0 1 12 5.9z"/>
-              </svg>
-            </span>
-            <div class="about-copy">
-              <h3>Built for Long Island</h3>
-              <p>
-                PERX starts locally with a focus on real neighborhoods, real businesses,
-                and the places people actually go every day. Our goal is to create a more
-                connected and rewarding local experience.
-              </p>
+          <section class="step is-hidden" data-step="2" aria-hidden="true">
+            <h3>Your PERX Offer</h3>
+            <p class="step-intro">What reward would you like to offer PERX members?</p>
+            <label>
+              Offer Details
+              <textarea
+                name="offerDetails"
+                rows="6"
+                required
+                placeholder="Examples: 20 cents off or 25 cents off per pass by proximity, or a custom offer per pass."
+              ></textarea>
+            </label>
+          </section>
+
+          <section class="step is-hidden" data-step="3" aria-hidden="true">
+            <h3>Business Verification</h3>
+            <p class="step-intro">
+              Before joining PERX, we verify that you are authorized to represent this business.
+            </p>
+
+            <div class="verification-card">
+              <p class="verification-title">Business Email Domain Check</p>
+              <p id="domainCheckStatus" class="status-pill neutral">Awaiting details</p>
             </div>
-          </article>
+
+            <div class="verification-card">
+              <p class="verification-title">Email Verification (Required)</p>
+              <button type="button" class="secondary" id="sendCodesBtn">Send Verification Codes</button>
+              <label>
+                Enter 6-digit email code
+                <input type="text" id="emailCode" maxlength="6" inputmode="numeric" placeholder="000000" />
+              </label>
+              <button type="button" class="secondary" id="verifyEmailBtn">Verify Email</button>
+              <p id="emailVerifyStatus" class="status-pill neutral">Not verified</p>
+            </div>
+
+            <div class="verification-card">
+              <p class="verification-title">Business Phone Verification (Required)</p>
+              <label>
+                Enter 6-digit SMS code
+                <input type="text" id="phoneCode" maxlength="6" inputmode="numeric" placeholder="000000" />
+              </label>
+              <button type="button" class="secondary" id="verifyPhoneBtn">Verify Phone</button>
+              <p id="phoneVerifyStatus" class="status-pill neutral">Not verified</p>
+            </div>
+          </section>
+
+          <section class="step is-hidden" data-step="4" aria-hidden="true">
+            <h3>Business Participation Agreement</h3>
+            <p class="step-intro">Please read this agreement carefully before joining PERX.</p>
+
+            <div class="agreement-box" id="agreementBox">
+              <article>
+                <h4>PERX Business Participation Agreement</h4>
+                <p>
+                  This Business Participation Agreement (Agreement) is entered between PERX and
+                  the participating business identified during signup (Business). By completing this
+                  onboarding workflow, Business agrees to provide the selected offer to eligible PERX
+                  members and to participate according to the terms below.
+                </p>
+                <p>
+                  1. Offer Fulfillment: Business will honor the offer submitted in this application for
+                  valid PERX member transactions, subject to normal inventory and operating
+                  limitations.
+                </p>
+                <p>
+                  2. Accuracy of Information: Business certifies all submitted business information,
+                  ownership/authorization statements, and contact details are accurate and current.
+                </p>
+                <p>
+                  3. Authorized Representative: Signer certifies under penalty of perjury that they are
+                  the business owner or an authorized representative with authority to enter legally
+                  binding agreements.
+                </p>
+                <p>
+                  4. Verification and Review: PERX may perform identity, ownership, and business
+                  record verification, including domain checks, business listing checks, duplicate
+                  analysis, and fraud screening. Submissions may remain pending until manual review
+                  completes.
+                </p>
+                <p>
+                  5. Activation: No business is activated in PERX until approved by a PERX
+                  administrator.
+                </p>
+                <p>
+                  6. Audit Trail and Records: PERX retains signed agreement records, metadata,
+                  verification status, and submission logs for compliance, security, and operational
+                  purposes.
+                </p>
+                <p>
+                  7. Electronic Signatures: Business agrees that an electronic signature and related
+                  electronic consent have the same legal effect as a handwritten signature.
+                </p>
+                <p>
+                  8. Modifications: Agreement versions may change over time. Business remains bound
+                  to the version accepted at signature time unless superseded by a later signed
+                  agreement.
+                </p>
+                <p>
+                  9. Contact and Support: PERX may contact Business regarding onboarding,
+                  verification, compliance, or partnership operations.
+                </p>
+                <p>
+                  10. Termination: PERX reserves the right to reject or remove participation for
+                  suspected fraud, abuse, legal non-compliance, or policy violations.
+                </p>
+                <p class="agreement-end">End of Agreement</p>
+              </article>
+            </div>
+
+            <p id="agreementScrollStatus" class="status-pill warning">Scroll to the bottom to continue</p>
+
+            <label class="checkbox-row">
+              <input type="checkbox" name="certifyAuthority" required />
+              I certify that I am the owner of this business or am authorized to enter into agreements on behalf of this business.
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" name="agreeTerms" required />
+              I have read and agree to the PERX Business Participation Agreement.
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" name="legalBinding" required />
+              I understand this agreement is legally binding.
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" name="eSignConsent" required />
+              I agree that my electronic signature has the same legal effect as my handwritten signature.
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" name="penaltyPerjury" required />
+              I certify under penalty of perjury that I am the owner of this business or have authority to enter into legally binding agreements on behalf of this business.
+            </label>
+          </section>
+
+          <section class="step is-hidden" data-step="5" aria-hidden="true">
+            <h3>Electronic Signature</h3>
+            <div class="field-grid two-col">
+              <label>
+                Typed Full Legal Name
+                <input type="text" name="signatureName" required />
+              </label>
+              <label>
+                Current Date
+                <input type="date" name="signatureDate" required />
+              </label>
+            </div>
+
+            <label class="signature-label">Optional Drawn Signature</label>
+            <canvas id="signaturePad" width="800" height="220" aria-label="Draw signature"></canvas>
+            <div class="signature-actions">
+              <button type="button" class="secondary" id="clearSignatureBtn">Clear Signature</button>
+            </div>
+
+            <p class="meta-note">
+              We automatically record timestamp, IP address, browser, operating system, device
+              information, user agent, approximate location, agreement version, and verification
+              status.
+            </p>
+          </section>
+
+          <footer class="wizard-actions">
+            <button type="button" class="secondary" id="backBtn">Back</button>
+            <button type="button" class="secondary" id="nextBtn">Continue</button>
+            <button type="submit" class="primary is-hidden" id="joinBtn">Join PERX</button>
+          </footer>
+
+          <p id="formFeedback" class="form-feedback" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="panel success-panel is-hidden" id="successPanel" aria-hidden="true">
+        <p class="eyebrow">Submission Complete</p>
+        <h2>Welcome to PERX!</h2>
+        <p>
+          Thank you for applying to become a PERX partner. We've received your signed Business
+          Participation Agreement.
+        </p>
+        <p>Our team will review your submission shortly. You will receive an email once approved.</p>
+        <p id="agreementNumberLabel" class="agreement-number"></p>
+        <div class="success-actions">
+          <button type="button" class="secondary" id="returnHomeBtn">Return Home</button>
+          <a id="downloadPdfBtn" class="primary link-button" href="#" target="_blank" rel="noopener">
+            Download Signed Agreement
+          </a>
         </div>
-
-        <p class="coming-soon-hype about-hype">More is coming soon. PERX is just getting started, and the next wave will be even bigger.</p>
-        <p class="contact-cta about-contact-cta">
-          Contact: <a href="mailto:chasemallor@gmail.com">chasemallor@gmail.com</a>.<br />
-          If your business wants to be a part of PERX, feel free to email me.
-        </p>
-        <p class="legal-links about-legal-links">
-          Read our <a href="privacy-policy.html">Privacy Policy</a>.
-        </p>
-
-        <button type="button" class="secondary-btn" id="backToWaitlistBtn">Back to Waitlist</button>
       </section>
     </main>
-
-    <!-- JSON-LD Structured Data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "PERX",
-      "description": "A rewarding mobile app for Long Island residents that turns everyday moments into subtle unlocks waiting nearby.",
-      "url": "https://joinperx.com",
-      "applicationCategory": "MobileApplication",
-      "operatingSystem": "Android, iOS",
-      "inLanguage": "en-US",
-      "availableLanguage": "en",
-      "areaServed": "Long Island, New York",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      }
-    }
-    </script>
 
     <script src="script.js"></script>
   </body>
