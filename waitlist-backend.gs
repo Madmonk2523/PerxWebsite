@@ -49,6 +49,12 @@ function doGet(e) {
     }
     return jsonResponse_(result);
   } catch (error) {
+    tryLogAudit_('SERVER_ERROR', {
+      action,
+      message: getErrorMessage_(error),
+      stack: getErrorStack_(error)
+    });
+
     const fallback = {
       ok: false,
       message: 'Server error. Please try again.',
@@ -70,6 +76,12 @@ function doPost(e) {
     const result = routeAction_(action, payload);
     return jsonResponse_(result);
   } catch (error) {
+    tryLogAudit_('SERVER_ERROR', {
+      action: 'POST',
+      message: getErrorMessage_(error),
+      stack: getErrorStack_(error)
+    });
+
     return jsonResponse_({ ok: false, message: 'Invalid request payload.', errorCode: 'BAD_REQUEST' });
   }
 }
@@ -243,7 +255,22 @@ function submitAgreement_(payload) {
   const now = new Date();
   const status = 'Pending Approval';
 
-  const pdfResult = generateAgreementPdf_(submission, verification.session, agreementId, fraudFlags, now);
+  let pdfResult = { file: null, url: '' };
+  const processingNotes = [];
+
+  try {
+    pdfResult = generateAgreementPdf_(submission, verification.session, agreementId, fraudFlags, now);
+  } catch (error) {
+    const message = 'PDF generation failed: ' + getErrorMessage_(error);
+    processingNotes.push(message);
+    tryLogAudit_('PDF_GENERATION_FAILED', {
+      agreementId,
+      businessName: submission.businessName,
+      message,
+      stack: getErrorStack_(error)
+    });
+  }
+
   const pdfUrl = pdfResult.url || '';
 
   const rowData = buildSubmissionRow_(submission, verification.session, {
@@ -253,26 +280,66 @@ function submitAgreement_(payload) {
     fraudFlags,
     pdfUrl,
     publicBusinessMatchStatus: simulateBusinessMatch_(submission),
-    ownershipVerified: 'Pending Review'
+    ownershipVerified: 'Pending Review',
+    internalTags: processingNotes.join(' | ')
   });
 
   const sheet = getOrCreateSubmissionSheet_();
   sheet.appendRow(rowData);
+  const submissionRow = sheet.getLastRow();
 
-  sendBusinessConfirmation_(submission, agreementId, pdfResult.file);
-  sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, pdfUrl);
+  try {
+    sendBusinessConfirmation_(submission, agreementId, pdfResult.file);
+  } catch (error) {
+    const message = 'Business confirmation email failed: ' + getErrorMessage_(error);
+    processingNotes.push(message);
+    tryLogAudit_('BUSINESS_CONFIRMATION_EMAIL_FAILED', {
+      agreementId,
+      businessEmail: submission.businessEmail,
+      message,
+      stack: getErrorStack_(error)
+    });
+  }
 
-  logAudit_('AGREEMENT_SUBMITTED', {
+  try {
+    sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, pdfUrl);
+  } catch (error) {
+    const message = 'Admin notification email failed: ' + getErrorMessage_(error);
+    processingNotes.push(message);
+    tryLogAudit_('ADMIN_NOTIFICATION_EMAIL_FAILED', {
+      agreementId,
+      adminEmail: ADMIN_EMAIL,
+      message,
+      stack: getErrorStack_(error)
+    });
+  }
+
+  if (processingNotes.length) {
+    try {
+      sheet.getRange(submissionRow, 41).setValue(processingNotes.join(' | '));
+    } catch (error) {
+      tryLogAudit_('PROCESSING_NOTES_UPDATE_FAILED', {
+        agreementId,
+        message: getErrorMessage_(error),
+        stack: getErrorStack_(error)
+      });
+    }
+  }
+
+  tryLogAudit_('AGREEMENT_SUBMITTED', {
     agreementId,
     businessName: submission.businessName,
     businessEmail: submission.businessEmail,
     status,
-    fraudFlags: fraudFlags.join('|')
+    fraudFlags: fraudFlags.join('|'),
+    processingNotes: processingNotes.join('|')
   });
 
   return {
     ok: true,
-    message: 'Agreement submitted successfully. Pending admin review.',
+    message: processingNotes.length
+      ? 'Agreement submitted successfully. PERX received it and will finish processing the file during review.'
+      : 'Agreement submitted successfully. Pending admin review.',
     agreementId,
     pdfUrl,
     approvalStatus: status,
@@ -617,7 +684,7 @@ function buildSubmissionRow_(submission, session, context) {
     '',
     context.ownershipVerified,
     formatIso_(new Date()),
-    '',
+    cleanText_(context.internalTags),
     submission.signerRole,
     submission.authorityBasis,
     submission.offerRestrictions,
@@ -800,6 +867,10 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
   const approveUrl = buildAdminActionUrl_(ACTIONS.ADMIN_APPROVE, agreementId, submission.businessName);
   const rejectUrl = buildAdminActionUrl_(ACTIONS.ADMIN_REJECT, agreementId, submission.businessName);
   const requestInfoUrl = buildAdminActionUrl_(ACTIONS.ADMIN_REQUEST_INFO, agreementId, submission.businessName);
+  const pdfHtml = pdfUrl
+    ? '<p><a href="' + escapeHtml_(pdfUrl) + '">View Agreement PDF</a></p>'
+    : '<p><strong>Agreement PDF:</strong> Not generated automatically. Use the sheet record for review.</p>';
+  const pdfText = pdfUrl || 'Not generated automatically. Use the sheet record for review.';
 
   const htmlBody =
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
@@ -820,7 +891,7 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
     escapeHtml_(verificationStatusLabel_(submission.phoneVerificationStatus)) +
     '</p>' +
     '<p><strong>Fraud Flags:</strong> ' + escapeHtml_(fraudFlags.join(' | ')) + '</p>' +
-    '<p><a href="' + escapeHtml_(pdfUrl) + '">View Agreement PDF</a></p>' +
+    pdfHtml +
     '<p><a href="' + escapeHtml_(approveUrl) + '">Approve</a> | ' +
     '<a href="' + escapeHtml_(rejectUrl) + '">Reject</a> | ' +
     '<a href="' + escapeHtml_(requestInfoUrl) + '">Request More Information</a></p>' +
@@ -845,7 +916,7 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
       'Verification: Email ' + verificationStatusLabel_(submission.emailVerificationStatus) +
       ' | Phone ' + verificationStatusLabel_(submission.phoneVerificationStatus) + '\n' +
       'Fraud Flags: ' + fraudFlags.join(' | ') + '\n' +
-      'PDF: ' + pdfUrl + '\n\n' +
+      'PDF: ' + pdfText + '\n\n' +
       'Approve: ' + approveUrl + '\n' +
       'Reject: ' + rejectUrl + '\n' +
       'Request More Info: ' + requestInfoUrl,
@@ -1185,6 +1256,30 @@ function logAudit_(eventType, details) {
     cleanText_(eventType),
     JSON.stringify(details || {})
   ]);
+}
+
+function tryLogAudit_(eventType, details) {
+  try {
+    logAudit_(eventType, details);
+  } catch (error) {
+    // Avoid hiding the original user-facing result if audit logging fails.
+  }
+}
+
+function getErrorMessage_(error) {
+  if (error && error.message) {
+    return cleanText_(error.message);
+  }
+
+  return cleanText_(error) || 'Unknown error';
+}
+
+function getErrorStack_(error) {
+  if (error && error.stack) {
+    return cleanText_(error.stack);
+  }
+
+  return '';
 }
 
 function simulateBusinessMatch_(submission) {
