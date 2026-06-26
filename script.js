@@ -19,7 +19,6 @@ const state = {
   verificationSessionId: "",
   emailVerified: false,
   phoneVerified: false,
-  phoneVerificationAvailable: false,
   signatureStrokes: [],
   telemetry: {
     ipAddress: "",
@@ -49,9 +48,7 @@ const stepElements = Array.from(document.querySelectorAll(".step"));
 
 const sendCodesBtn = document.getElementById("sendCodesBtn");
 const verifyEmailBtn = document.getElementById("verifyEmailBtn");
-const verifyPhoneBtn = document.getElementById("verifyPhoneBtn");
 const emailCodeInput = document.getElementById("emailCode");
-const phoneCodeInput = document.getElementById("phoneCode");
 const emailVerifyStatus = document.getElementById("emailVerifyStatus");
 const phoneVerifyStatus = document.getElementById("phoneVerifyStatus");
 const domainCheckStatus = document.getElementById("domainCheckStatus");
@@ -138,10 +135,6 @@ function setupEventListeners() {
 
   if (verifyEmailBtn) {
     verifyEmailBtn.addEventListener("click", () => verifyCode("email"));
-  }
-
-  if (verifyPhoneBtn) {
-    verifyPhoneBtn.addEventListener("click", () => verifyCode("phone"));
   }
 
   if (returnHomeBtn) {
@@ -307,11 +300,6 @@ function validateCurrentStep() {
       return false;
     }
 
-    if (state.phoneVerificationAvailable && !state.phoneVerified) {
-      setFeedback("Please confirm the business phone code before continuing.", "error");
-      return false;
-    }
-
     setFeedback("", "");
     return true;
   }
@@ -401,20 +389,9 @@ async function sendVerificationCodes() {
     state.verificationSessionId = String(result.sessionId || "");
     state.emailVerified = false;
     state.phoneVerified = false;
-    state.phoneVerificationAvailable = !!result.phoneCodeSent;
 
     setStatusPill(emailVerifyStatus, "Email code sent. Awaiting confirmation.", "warning");
-
-    if (phoneCodeInput && verifyPhoneBtn) {
-      phoneCodeInput.disabled = !state.phoneVerificationAvailable;
-      verifyPhoneBtn.disabled = !state.phoneVerificationAvailable;
-    }
-
-    if (state.phoneVerificationAvailable) {
-      setStatusPill(phoneVerifyStatus, "Phone code sent. Awaiting confirmation.", "warning");
-    } else {
-      setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
-    }
+    setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
 
     setFeedback(result.message || "Confirmation code sent.", "success");
   } catch (error) {
@@ -430,12 +407,7 @@ async function verifyCode(channel) {
     return;
   }
 
-  if (channel === "phone" && !state.phoneVerificationAvailable) {
-    setFeedback("Phone confirmation is not available yet. PERX may confirm this manually before approval.", "error");
-    return;
-  }
-
-  const input = channel === "email" ? emailCodeInput : phoneCodeInput;
+  const input = emailCodeInput;
   const code = String(input && input.value || "").trim();
 
   if (!/^\d{6}$/.test(code)) {
@@ -458,22 +430,13 @@ async function verifyCode(channel) {
       throw new Error(result.message || "Confirmation failed.");
     }
 
-    if (channel === "email") {
-      state.emailVerified = true;
-      setStatusPill(emailVerifyStatus, "Business email confirmed", "success");
-    } else {
-      state.phoneVerified = true;
-      setStatusPill(phoneVerifyStatus, "Business phone confirmed", "success");
-    }
+    state.emailVerified = true;
+    setStatusPill(emailVerifyStatus, "Business email confirmed", "success");
 
     setFeedback(result.message || "Confirmation successful.", "success");
   } catch (error) {
     setFeedback(error.message || "Confirmation failed.", "error");
-    if (channel === "email") {
-      setStatusPill(emailVerifyStatus, "Email confirmation failed", "error");
-    } else {
-      setStatusPill(phoneVerifyStatus, "Phone confirmation failed", "error");
-    }
+    setStatusPill(emailVerifyStatus, "Email confirmation failed", "error");
   }
 }
 
@@ -515,17 +478,9 @@ function resetVerificationState() {
   state.verificationSessionId = "";
   state.emailVerified = false;
   state.phoneVerified = false;
-  state.phoneVerificationAvailable = false;
 
   if (emailCodeInput) {
     emailCodeInput.value = "";
-  }
-  if (phoneCodeInput) {
-    phoneCodeInput.value = "";
-    phoneCodeInput.disabled = true;
-  }
-  if (verifyPhoneBtn) {
-    verifyPhoneBtn.disabled = true;
   }
 
   setStatusPill(emailVerifyStatus, "Not confirmed", "neutral");
@@ -541,11 +496,6 @@ async function submitAgreement(event) {
 
   if (!state.emailVerified) {
     setFeedback("Business email confirmation must be completed before submission.", "error");
-    return;
-  }
-
-  if (state.phoneVerificationAvailable && !state.phoneVerified) {
-    setFeedback("Business phone confirmation must be completed before submission.", "error");
     return;
   }
 
@@ -659,18 +609,10 @@ function resetFormFlow() {
   state.verificationSessionId = "";
   state.emailVerified = false;
   state.phoneVerified = false;
-  state.phoneVerificationAvailable = false;
 
   clearSignature();
   if (emailCodeInput) {
     emailCodeInput.value = "";
-  }
-  if (phoneCodeInput) {
-    phoneCodeInput.value = "";
-    phoneCodeInput.disabled = true;
-  }
-  if (verifyPhoneBtn) {
-    verifyPhoneBtn.disabled = true;
   }
   setStatusPill(domainCheckStatus, "Awaiting business email", "neutral");
   setStatusPill(emailVerifyStatus, "Not confirmed", "neutral");

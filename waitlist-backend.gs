@@ -104,7 +104,7 @@ function startVerification_(payload) {
   if (!businessName || !isValidEmail_(businessEmail) || !businessPhone) {
     return {
       ok: false,
-      message: 'Business name, valid email, and phone are required to send codes.',
+      message: 'Business name, valid email, and phone are required to send the email code.',
       errorCode: 'VALIDATION_ERROR'
     };
   }
@@ -121,10 +121,8 @@ function startVerification_(payload) {
   const expiresAt = new Date(now.getTime() + VERIFICATION_TTL_MINUTES * 60 * 1000);
   const sessionId = createSessionId_();
   const emailCode = generateSixDigitCode_();
-  const phoneCode = generateSixDigitCode_();
 
   sendEmailCode_(businessEmail, ownerName || businessName, emailCode);
-  const phoneCodeSent = sendSmsCode_(businessPhone, phoneCode);
 
   const sheet = getOrCreateVerificationSheet_();
   sheet.appendRow([
@@ -137,9 +135,9 @@ function startVerification_(payload) {
     website,
     ownerName,
     maskCode_(emailCode),
-    maskCode_(phoneCode),
+    'Manual Pending',
     hashCode_(emailCode),
-    hashCode_(phoneCode),
+    '',
     'false',
     'false',
     '',
@@ -150,7 +148,7 @@ function startVerification_(payload) {
     '0',
     '0',
     '',
-    phoneCodeSent ? 'true' : 'false'
+    'Manual'
   ]);
 
   logAudit_('VERIFICATION_STARTED', {
@@ -163,13 +161,10 @@ function startVerification_(payload) {
 
   return {
     ok: true,
-    message: phoneCodeSent
-      ? 'Confirmation codes sent to your business email and phone.'
-      : 'Confirmation code sent to your business email. PERX may confirm the phone number before approval.',
+    message: 'Confirmation code sent to your business email. PERX may confirm the phone number before approval.',
     sessionId,
     expiresInMinutes: VERIFICATION_TTL_MINUTES,
-    phoneCodeSent,
-    verificationPolicy: 'Business email confirmation is required before submission. Phone confirmation is recorded when SMS is connected.'
+    verificationPolicy: 'Business email confirmation is required before submission. Phone confirmation is manual before approval.'
   };
 }
 
@@ -179,7 +174,7 @@ function verifyCode_(payload) {
   const code = cleanText_(payload.code);
   const ipAddress = cleanText_(payload.ipAddress);
 
-  if (!sessionId || !/^[0-9]{6}$/.test(code) || (channel !== 'email' && channel !== 'phone')) {
+  if (!sessionId || !/^[0-9]{6}$/.test(code) || channel !== 'email') {
     return { ok: false, message: 'Invalid verification request.', errorCode: 'VALIDATION_ERROR' };
   }
 
@@ -198,49 +193,26 @@ function verifyCode_(payload) {
   }
 
   let emailAttempts = Number(values[19] || 0);
-  let phoneAttempts = Number(values[20] || 0);
+  emailAttempts += 1;
 
-  if (channel === 'email') {
-    emailAttempts += 1;
-    if (emailAttempts > MAX_CODE_ATTEMPTS) {
-      return { ok: false, message: 'Too many email verification attempts.', errorCode: 'TOO_MANY_ATTEMPTS' };
-    }
-
-    const ok = safeEquals_(hashCode_(code), String(values[10] || ''));
-    sheet.getRange(row, 20).setValue(String(emailAttempts));
-
-    if (!ok) {
-      return { ok: false, message: 'Incorrect email code.', errorCode: 'INVALID_CODE' };
-    }
-
-    sheet.getRange(row, 13).setValue('true');
-    sheet.getRange(row, 15).setValue(formatIso_(new Date()));
-    sheet.getRange(row, 22).setValue(ipAddress);
-
-    logAudit_('EMAIL_VERIFIED', { sessionId, ipAddress });
-
-    return { ok: true, message: 'Email verified successfully.' };
+  if (emailAttempts > MAX_CODE_ATTEMPTS) {
+    return { ok: false, message: 'Too many email verification attempts.', errorCode: 'TOO_MANY_ATTEMPTS' };
   }
 
-  phoneAttempts += 1;
-  if (phoneAttempts > MAX_CODE_ATTEMPTS) {
-    return { ok: false, message: 'Too many phone verification attempts.', errorCode: 'TOO_MANY_ATTEMPTS' };
-  }
-
-  const ok = safeEquals_(hashCode_(code), String(values[11] || ''));
-  sheet.getRange(row, 21).setValue(String(phoneAttempts));
+  const ok = safeEquals_(hashCode_(code), String(values[10] || ''));
+  sheet.getRange(row, 20).setValue(String(emailAttempts));
 
   if (!ok) {
-    return { ok: false, message: 'Incorrect phone code.', errorCode: 'INVALID_CODE' };
+    return { ok: false, message: 'Incorrect email code.', errorCode: 'INVALID_CODE' };
   }
 
-  sheet.getRange(row, 14).setValue('true');
-  sheet.getRange(row, 16).setValue(formatIso_(new Date()));
+  sheet.getRange(row, 13).setValue('true');
+  sheet.getRange(row, 15).setValue(formatIso_(new Date()));
   sheet.getRange(row, 22).setValue(ipAddress);
 
-  logAudit_('PHONE_VERIFIED', { sessionId, ipAddress });
+  logAudit_('EMAIL_VERIFIED', { sessionId, ipAddress });
 
-  return { ok: true, message: 'Phone verified successfully.' };
+  return { ok: true, message: 'Email verified successfully.' };
 }
 
 function submitAgreement_(payload) {
@@ -463,20 +435,11 @@ function getVerifiedSession_(sessionId) {
 
   const emailVerified = String(values[12]) === 'true';
   const phoneVerified = String(values[13]) === 'true';
-  const phoneCodeSent = String(values[22]) === 'true';
 
   if (!emailVerified) {
     return {
       ok: false,
       message: 'Business email confirmation must be completed.',
-      errorCode: 'VERIFICATION_REQUIRED'
-    };
-  }
-
-  if (phoneCodeSent && !phoneVerified) {
-    return {
-      ok: false,
-      message: 'Business phone confirmation must be completed.',
       errorCode: 'VERIFICATION_REQUIRED'
     };
   }
@@ -494,8 +457,7 @@ function getVerifiedSession_(sessionId) {
       ownerName: cleanText_(values[7]),
       emailVerifiedAt: String(values[14] || ''),
       phoneVerifiedAt: String(values[15] || ''),
-      verificationIp: String(values[21] || ''),
-      phoneCodeSent: phoneCodeSent
+      verificationIp: String(values[21] || '')
     }
   };
 }
@@ -955,52 +917,6 @@ function sendEmailCode_(toEmail, displayName, code) {
   });
 }
 
-function sendSmsCode_(phoneNumber, code) {
-  const props = PropertiesService.getScriptProperties();
-  const accountSid = cleanText_(props.getProperty('TWILIO_ACCOUNT_SID'));
-  const authToken = cleanText_(props.getProperty('TWILIO_AUTH_TOKEN'));
-  const fromPhone = cleanText_(props.getProperty('TWILIO_FROM_PHONE'));
-
-  if (!accountSid || !authToken || !fromPhone) {
-    logAudit_('SMS_CODE_NOT_SENT', {
-      phone: phoneNumber,
-      reason: 'Twilio not configured'
-    });
-    return false;
-  }
-
-  try {
-    const response = UrlFetchApp.fetch('https://api.twilio.com/2010-04-01/Accounts/' + encodeURIComponent(accountSid) + '/Messages.json', {
-      method: 'post',
-      muteHttpExceptions: true,
-      payload: {
-        To: phoneNumber,
-        From: fromPhone,
-        Body: 'Your PERX phone confirmation code is ' + code + '. It expires in ' + VERIFICATION_TTL_MINUTES + ' minutes.'
-      },
-      headers: {
-        Authorization: 'Basic ' + Utilities.base64Encode(accountSid + ':' + authToken)
-      }
-    });
-
-    const statusCode = Number(response.getResponseCode() || 0);
-    const sent = statusCode >= 200 && statusCode < 300;
-
-    logAudit_(sent ? 'SMS_CODE_SENT' : 'SMS_CODE_FAILED', {
-      phone: phoneNumber,
-      statusCode: statusCode
-    });
-
-    return sent;
-  } catch (error) {
-    logAudit_('SMS_CODE_FAILED', {
-      phone: phoneNumber,
-      error: String(error && error.message || error)
-    });
-    return false;
-  }
-}
-
 function getOrCreateSubmissionSheet_() {
   const spreadsheet = getSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(SUBMISSIONS_SHEET_NAME);
@@ -1085,9 +1001,9 @@ function getOrCreateVerificationSheet_() {
     'website',
     'ownerName',
     'emailCodeMasked',
-    'phoneCodeMasked',
+    'phoneConfirmationStatus',
     'emailCodeHash',
-    'phoneCodeHash',
+    'phoneConfirmationNotes',
     'emailVerified',
     'phoneVerified',
     'emailVerifiedAt',
@@ -1096,9 +1012,9 @@ function getOrCreateVerificationSheet_() {
     'userAgent',
     'deviceInfo',
     'emailAttempts',
-    'phoneAttempts',
+    'phoneConfirmationAttempts',
     'lastVerificationIp',
-    'phoneCodeSent'
+    'phoneConfirmationMethod'
   ]];
 
   const expectedColumns = headers[0].length;
