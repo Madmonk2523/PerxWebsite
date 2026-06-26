@@ -1101,6 +1101,10 @@ function getOrCreateAuditSheet_() {
   return sheet;
 }
 
+function authorizeOnce() {
+  authorizeOnce_();
+}
+
 function authorizeOnce_() {
   getOrCreateSubmissionSheet_();
   getOrCreateVerificationSheet_();
