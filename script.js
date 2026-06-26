@@ -14,11 +14,8 @@ const FREE_EMAIL_DOMAINS = new Set([
 
 const state = {
   step: 1,
-  totalSteps: 5,
+  totalSteps: 4,
   agreementReachedBottom: false,
-  verificationSessionId: "",
-  emailVerified: false,
-  phoneVerified: false,
   signatureStrokes: [],
   telemetry: {
     ipAddress: "",
@@ -45,15 +42,6 @@ const formFeedback = document.getElementById("formFeedback");
 const stepCounter = document.getElementById("stepCounter");
 const progressFill = document.getElementById("progressFill");
 const stepElements = Array.from(document.querySelectorAll(".step"));
-
-const sendCodesBtn = document.getElementById("sendCodesBtn");
-const verifyEmailBtn = document.getElementById("verifyEmailBtn");
-const verifyPhoneBtn = document.getElementById("verifyPhoneBtn");
-const emailCodeInput = document.getElementById("emailCode");
-const phoneCodeInput = document.getElementById("phoneCode");
-const emailVerifyStatus = document.getElementById("emailVerifyStatus");
-const phoneVerifyStatus = document.getElementById("phoneVerifyStatus");
-const domainCheckStatus = document.getElementById("domainCheckStatus");
 
 const agreementBox = document.getElementById("agreementBox");
 const agreementScrollStatus = document.getElementById("agreementScrollStatus");
@@ -111,18 +99,6 @@ function setupEventListeners() {
     });
   }
 
-  if (sendCodesBtn) {
-    sendCodesBtn.addEventListener("click", sendVerificationCodes);
-  }
-
-  if (verifyEmailBtn) {
-    verifyEmailBtn.addEventListener("click", () => verifyCode("email"));
-  }
-
-  if (verifyPhoneBtn) {
-    verifyPhoneBtn.addEventListener("click", () => verifyCode("phone"));
-  }
-
   if (agreementBox) {
     agreementBox.addEventListener("scroll", () => {
       const reachedBottom =
@@ -156,15 +132,6 @@ function setupEventListeners() {
 
   if (onboardingForm) {
     onboardingForm.addEventListener("submit", submitAgreement);
-
-    const domainInputs = [onboardingForm.businessEmail, onboardingForm.website];
-    domainInputs.forEach((input) => {
-      if (!input) {
-        return;
-      }
-      input.addEventListener("input", updateDomainStatus);
-      input.addEventListener("blur", updateDomainStatus);
-    });
   }
 }
 
@@ -217,9 +184,6 @@ function renderStep() {
     joinBtn.classList.toggle("is-hidden", !lastStep);
   }
 
-  if (state.step === 3) {
-    updateDomainStatus();
-  }
 }
 
 function validateCurrentStep() {
@@ -271,21 +235,6 @@ function validateCurrentStep() {
   }
 
   if (state.step === 3) {
-    if (!state.verificationSessionId) {
-      setFeedback("Please send verification codes and complete verification.", "error");
-      return false;
-    }
-
-    if (!state.emailVerified || !state.phoneVerified) {
-      setFeedback("Email and phone verification are required before continuing.", "error");
-      return false;
-    }
-
-    setFeedback("", "");
-    return true;
-  }
-
-  if (state.step === 4) {
     if (!state.agreementReachedBottom) {
       setFeedback("Please scroll to the end of the agreement before continuing.", "error");
       return false;
@@ -312,7 +261,7 @@ function validateCurrentStep() {
     return true;
   }
 
-  if (state.step === 5) {
+  if (state.step === 4) {
     if (!String(onboardingForm.signatureName.value || "").trim()) {
       setFeedback("Please enter your full legal name for electronic signature.", "error");
       onboardingForm.signatureName.focus();
@@ -332,163 +281,10 @@ function validateCurrentStep() {
   return true;
 }
 
-async function sendVerificationCodes() {
-  if (!onboardingForm) {
-    return;
-  }
-
-  const email = String(onboardingForm.businessEmail.value || "").trim().toLowerCase();
-  const phone = String(onboardingForm.businessPhone.value || "").trim();
-  const businessName = String(onboardingForm.businessName.value || "").trim();
-
-  if (!businessName || !isValidEmail(email) || phone.length < 7) {
-    setFeedback("Complete business name, valid email, and phone before requesting codes.", "error");
-    return;
-  }
-
-  sendCodesBtn.disabled = true;
-  setFeedback("Sending verification codes...", "");
-
-  try {
-    const result = await jsonpRequest("startVerification", {
-      businessName,
-      businessEmail: email,
-      businessPhone: phone,
-      website: String(onboardingForm.website.value || "").trim(),
-      ownerName: String(onboardingForm.ownerName.value || "").trim(),
-      ipAddress: state.telemetry.ipAddress,
-      userAgent: navigator.userAgent,
-      deviceInfo: getDeviceInfo(),
-      startedAt: onboardingForm.formStartedAt ? onboardingForm.formStartedAt.value : ""
-    });
-
-    if (!result.ok) {
-      throw new Error(result.message || "Could not send verification codes.");
-    }
-
-    state.verificationSessionId = String(result.sessionId || "");
-    state.emailVerified = false;
-    state.phoneVerified = false;
-
-    setStatusPill(emailVerifyStatus, "Code sent. Awaiting verification.", "warning");
-    setStatusPill(phoneVerifyStatus, "Code sent. Awaiting verification.", "warning");
-    setFeedback(result.message || "Verification codes sent.", "success");
-
-    if (result.devHints) {
-      setFeedback(`${result.message} ${result.devHints}`, "success");
-    }
-  } catch (error) {
-    setFeedback(error.message || "Unable to send verification codes.", "error");
-  } finally {
-    sendCodesBtn.disabled = false;
-  }
-}
-
-async function verifyCode(channel) {
-  if (!state.verificationSessionId) {
-    setFeedback("Please send verification codes first.", "error");
-    return;
-  }
-
-  const code = channel === "email" ? String(emailCodeInput.value || "").trim() : String(phoneCodeInput.value || "").trim();
-
-  if (!/^\d{6}$/.test(code)) {
-    setFeedback("Please enter a valid 6-digit verification code.", "error");
-    return;
-  }
-
-  setFeedback(`Verifying ${channel} code...`, "");
-
-  try {
-    const result = await jsonpRequest("verifyCode", {
-      sessionId: state.verificationSessionId,
-      channel,
-      code,
-      ipAddress: state.telemetry.ipAddress
-    });
-
-    if (!result.ok) {
-      throw new Error(result.message || "Verification failed.");
-    }
-
-    if (channel === "email") {
-      state.emailVerified = true;
-      setStatusPill(emailVerifyStatus, "Email verified", "success");
-    } else {
-      state.phoneVerified = true;
-      setStatusPill(phoneVerifyStatus, "Phone verified", "success");
-    }
-
-    if (state.emailVerified && state.phoneVerified) {
-      setFeedback("Business verification completed.", "success");
-    } else {
-      setFeedback(result.message || "Verification successful.", "success");
-    }
-  } catch (error) {
-    setFeedback(error.message || "Verification failed.", "error");
-    if (channel === "email") {
-      setStatusPill(emailVerifyStatus, "Email verification failed", "error");
-    } else {
-      setStatusPill(phoneVerifyStatus, "Phone verification failed", "error");
-    }
-  }
-}
-
-function updateDomainStatus() {
-  if (!onboardingForm) {
-    return;
-  }
-
-  const email = String(onboardingForm.businessEmail.value || "").trim().toLowerCase();
-  const website = String(onboardingForm.website.value || "").trim();
-
-  if (!isValidEmail(email)) {
-    setStatusPill(domainCheckStatus, "Enter a valid business email first", "neutral");
-    return;
-  }
-
-  const emailDomain = getEmailDomain(email);
-  const websiteDomain = getWebsiteDomain(website);
-
-  if (FREE_EMAIL_DOMAINS.has(emailDomain)) {
-    setStatusPill(
-      domainCheckStatus,
-      "Public email domain detected. Submission will be flagged for manual review.",
-      "warning"
-    );
-    return;
-  }
-
-  if (!websiteDomain) {
-    setStatusPill(
-      domainCheckStatus,
-      "No website provided. Submission can continue with manual verification checks.",
-      "warning"
-    );
-    return;
-  }
-
-  if (emailDomain === websiteDomain || emailDomain.endsWith(`.${websiteDomain}`)) {
-    setStatusPill(domainCheckStatus, "Verified Business Domain ✓", "success");
-    return;
-  }
-
-  setStatusPill(
-    domainCheckStatus,
-    "Email domain does not match website domain. Submission will be flagged for review.",
-    "warning"
-  );
-}
-
 async function submitAgreement(event) {
   event.preventDefault();
 
   if (!validateCurrentStep()) {
-    return;
-  }
-
-  if (!state.emailVerified || !state.phoneVerified) {
-    setFeedback("Email and phone verification must be completed before submission.", "error");
     return;
   }
 
@@ -524,7 +320,7 @@ function buildSubmissionPayload() {
   const website = String(onboardingForm.website.value || "").trim();
 
   return {
-    sessionId: state.verificationSessionId,
+    sessionId: "",
     agreementVersion: AGREEMENT_VERSION,
     businessName: String(onboardingForm.businessName.value || "").trim(),
     businessAddress: String(onboardingForm.businessAddress.value || "").trim(),
@@ -556,8 +352,8 @@ function buildSubmissionPayload() {
     operatingSystem: getOperatingSystem(),
     deviceInfo: getDeviceInfo(),
     approxLocation: buildApproxLocation(),
-    emailVerificationStatus: state.emailVerified,
-    phoneVerificationStatus: state.phoneVerified,
+    emailVerificationStatus: false,
+    phoneVerificationStatus: false,
     emailDomainStatus: getDomainStatusCode(email, website)
   };
 }
@@ -595,14 +391,8 @@ function resetFormFlow() {
 
   state.step = 1;
   state.agreementReachedBottom = false;
-  state.verificationSessionId = "";
-  state.emailVerified = false;
-  state.phoneVerified = false;
 
   clearSignature();
-  setStatusPill(domainCheckStatus, "Awaiting details", "neutral");
-  setStatusPill(emailVerifyStatus, "Not verified", "neutral");
-  setStatusPill(phoneVerifyStatus, "Not verified", "neutral");
   setStatusPill(agreementScrollStatus, "Scroll to the bottom to continue", "warning");
 
   renderStep();

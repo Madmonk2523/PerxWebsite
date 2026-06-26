@@ -6,7 +6,7 @@
     <title>Join PERX | Official Business Signup Portal</title>
     <meta
       name="description"
-      content="Official PERX business onboarding portal. Verify your business, sign the participation agreement electronically, and submit in minutes."
+      content="Official PERX business onboarding portal. Sign the participation agreement electronically and submit in minutes."
     />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#f5f7fb" />
@@ -17,14 +17,14 @@
     <meta property="og:title" content="Join PERX | Official Business Signup Portal" />
     <meta
       property="og:description"
-      content="Complete PERX business onboarding online with verification and electronic signature."
+      content="Complete PERX business onboarding online with electronic signature."
     />
 
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:title" content="Join PERX | Official Business Signup Portal" />
     <meta
       property="twitter:description"
-      content="Complete PERX business onboarding online with verification and electronic signature."
+      content="Complete PERX business onboarding online with electronic signature."
     />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -63,7 +63,7 @@
         <header class="wizard-header">
           <p class="eyebrow">Business Onboarding</p>
           <h2>Official Business Participation Signup</h2>
-          <p class="step-counter" id="stepCounter">Step 1 of 5</p>
+          <p class="step-counter" id="stepCounter">Step 1 of 4</p>
           <div class="progress-track" aria-hidden="true">
             <span id="progressFill"></span>
           </div>
@@ -152,39 +152,6 @@
           </section>
 
           <section class="step is-hidden" data-step="3" aria-hidden="true">
-            <h3>Business Verification</h3>
-            <p class="step-intro">
-              Before joining PERX, we verify that you are authorized to represent this business.
-            </p>
-
-            <div class="verification-card">
-              <p class="verification-title">Business Email Domain Check</p>
-              <p id="domainCheckStatus" class="status-pill neutral">Awaiting details</p>
-            </div>
-
-            <div class="verification-card">
-              <p class="verification-title">Email Verification (Required)</p>
-              <button type="button" class="secondary" id="sendCodesBtn">Send Verification Codes</button>
-              <label>
-                Enter 6-digit email code
-                <input type="text" id="emailCode" maxlength="6" inputmode="numeric" placeholder="000000" />
-              </label>
-              <button type="button" class="secondary" id="verifyEmailBtn">Verify Email</button>
-              <p id="emailVerifyStatus" class="status-pill neutral">Not verified</p>
-            </div>
-
-            <div class="verification-card">
-              <p class="verification-title">Business Phone Verification (Required)</p>
-              <label>
-                Enter 6-digit SMS code
-                <input type="text" id="phoneCode" maxlength="6" inputmode="numeric" placeholder="000000" />
-              </label>
-              <button type="button" class="secondary" id="verifyPhoneBtn">Verify Phone</button>
-              <p id="phoneVerifyStatus" class="status-pill neutral">Not verified</p>
-            </div>
-          </section>
-
-          <section class="step is-hidden" data-step="4" aria-hidden="true">
             <h3>Business Participation Agreement</h3>
             <p class="step-intro">Please read this agreement carefully before joining PERX.</p>
 
@@ -271,7 +238,7 @@
             </label>
           </section>
 
-          <section class="step is-hidden" data-step="5" aria-hidden="true">
+          <section class="step is-hidden" data-step="4" aria-hidden="true">
             <h3>Electronic Signature</h3>
             <div class="field-grid two-col">
               <label>
@@ -292,8 +259,7 @@
 
             <p class="meta-note">
               We automatically record timestamp, IP address, browser, operating system, device
-              information, user agent, approximate location, agreement version, and verification
-              status.
+              information, user agent, approximate location, and agreement version.
             </p>
           </section>
 

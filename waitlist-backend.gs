@@ -252,7 +252,7 @@ function submitAgreement_(payload) {
     };
   }
 
-  const verification = getVerifiedSession_(submission.sessionId);
+  const verification = getSubmissionSession_(submission);
   if (!verification.ok) {
     return verification;
   }
@@ -384,7 +384,6 @@ function normalizeSubmissionPayload_(payload) {
 
 function validateSubmission_(submission) {
   const required = [
-    submission.sessionId,
     submission.businessName,
     submission.businessAddress,
     submission.city,
@@ -414,11 +413,30 @@ function validateSubmission_(submission) {
     return 'All required agreement confirmations must be accepted.';
   }
 
-  if (!submission.emailVerificationStatus || !submission.phoneVerificationStatus) {
-    return 'Email and phone verification are required before submission.';
+  return '';
+}
+
+function getSubmissionSession_(submission) {
+  if (submission.sessionId) {
+    return getVerifiedSession_(submission.sessionId);
   }
 
-  return '';
+  return {
+    ok: true,
+    session: {
+      sessionId: 'Not required',
+      startedAt: cleanText_(submission.formStartedAt),
+      expiresAt: '',
+      businessName: submission.businessName,
+      businessEmail: submission.businessEmail,
+      businessPhone: submission.businessPhone,
+      website: submission.website,
+      ownerName: submission.ownerName,
+      emailVerifiedAt: '',
+      phoneVerifiedAt: '',
+      verificationIp: ''
+    }
+  };
 }
 
 function getVerifiedSession_(sessionId) {
@@ -611,8 +629,8 @@ function buildSubmissionRow_(submission, session, context) {
     submission.deviceInfo,
     submission.userAgent,
     submission.approxLocation,
-    submission.emailVerificationStatus ? 'Verified' : 'Not Verified',
-    submission.phoneVerificationStatus ? 'Verified' : 'Not Verified',
+    verificationStatusLabel_(submission.emailVerificationStatus),
+    verificationStatusLabel_(submission.phoneVerificationStatus),
     submission.emailDomainStatus,
     context.publicBusinessMatchStatus,
     context.fraudFlags.join(' | '),
@@ -668,8 +686,8 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   body.appendParagraph('');
   body.appendParagraph('Verification and Metadata').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph('Verification Session ID: ' + session.sessionId);
-  body.appendParagraph('Email Verification Status: ' + (submission.emailVerificationStatus ? 'Verified' : 'Not Verified'));
-  body.appendParagraph('Phone Verification Status: ' + (submission.phoneVerificationStatus ? 'Verified' : 'Not Verified'));
+  body.appendParagraph('Email Verification Status: ' + verificationStatusLabel_(submission.emailVerificationStatus));
+  body.appendParagraph('Phone Verification Status: ' + verificationStatusLabel_(submission.phoneVerificationStatus));
   body.appendParagraph('Email Verified At: ' + (session.emailVerifiedAt || 'N/A'));
   body.appendParagraph('Phone Verified At: ' + (session.phoneVerifiedAt || 'N/A'));
   body.appendParagraph('Submission IP Address: ' + (submission.ipAddress || 'N/A'));
@@ -750,9 +768,9 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
     '<p><strong>Agreement ID:</strong> ' + escapeHtml_(agreementId) + '</p>' +
     '<p><strong>Status:</strong> ' + escapeHtml_(status) + '</p>' +
     '<p><strong>Verification:</strong> Email ' +
-    escapeHtml_(submission.emailVerificationStatus ? 'Verified' : 'Not Verified') +
+    escapeHtml_(verificationStatusLabel_(submission.emailVerificationStatus)) +
     ' | Phone ' +
-    escapeHtml_(submission.phoneVerificationStatus ? 'Verified' : 'Not Verified') +
+    escapeHtml_(verificationStatusLabel_(submission.phoneVerificationStatus)) +
     '</p>' +
     '<p><strong>Fraud Flags:</strong> ' + escapeHtml_(fraudFlags.join(' | ')) + '</p>' +
     '<p><a href="' + escapeHtml_(pdfUrl) + '">View Agreement PDF</a></p>' +
@@ -774,8 +792,8 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
       'Offer: ' + submission.offerDetails + '\n' +
       'Agreement ID: ' + agreementId + '\n' +
       'Status: ' + status + '\n' +
-      'Verification: Email ' + (submission.emailVerificationStatus ? 'Verified' : 'Not Verified') +
-      ' | Phone ' + (submission.phoneVerificationStatus ? 'Verified' : 'Not Verified') + '\n' +
+      'Verification: Email ' + verificationStatusLabel_(submission.emailVerificationStatus) +
+      ' | Phone ' + verificationStatusLabel_(submission.phoneVerificationStatus) + '\n' +
       'Fraud Flags: ' + fraudFlags.join(' | ') + '\n' +
       'PDF: ' + pdfUrl + '\n\n' +
       'Approve: ' + approveUrl + '\n' +
@@ -1286,6 +1304,10 @@ function padNumber_(value, size) {
 
 function yesNo_(value) {
   return value ? 'Yes' : 'No';
+}
+
+function verificationStatusLabel_(value) {
+  return value ? 'Verified' : 'Not required';
 }
 
 function safeJsonParse_(raw) {
