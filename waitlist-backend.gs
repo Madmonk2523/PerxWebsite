@@ -327,6 +327,10 @@ function adminDecision_(payload, status) {
 }
 
 function normalizeSubmissionPayload_(payload) {
+  const maxDiscount = normalizeMoney_(payload.maxDiscount);
+  const offerDetails = cleanText_(payload.offerDetails) || buildOfferDetails_(maxDiscount);
+  const offerRestrictions = cleanText_(payload.offerRestrictions) || buildOfferRestrictions_(maxDiscount);
+
   return {
     sessionId: cleanText_(payload.sessionId),
     agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.26',
@@ -344,8 +348,9 @@ function normalizeSubmissionPayload_(payload) {
     signerRole: cleanText_(payload.signerRole),
     authorityBasis: cleanText_(payload.authorityBasis),
     notes: cleanText_(payload.notes),
-    offerDetails: cleanText_(payload.offerDetails),
-    offerRestrictions: cleanText_(payload.offerRestrictions),
+    maxDiscount,
+    offerDetails,
+    offerRestrictions,
     signatureName: cleanText_(payload.signatureName),
     signatureDate: cleanText_(payload.signatureDate),
     drawnSignature: cleanText_(payload.drawnSignature),
@@ -366,7 +371,7 @@ function normalizeSubmissionPayload_(payload) {
     approxLocation: cleanText_(payload.approxLocation),
     emailVerificationStatus: cleanText_(payload.emailVerificationStatus) === 'true',
     phoneVerificationStatus: cleanText_(payload.phoneVerificationStatus) === 'true',
-    emailDomainStatus: cleanText_(payload.emailDomainStatus)
+    emailDomainStatus: 'NOT_CHECKED'
   };
 }
 
@@ -385,6 +390,7 @@ function validateSubmission_(submission) {
     submission.jobTitle,
     submission.signerRole,
     submission.authorityBasis,
+    submission.maxDiscount,
     submission.offerDetails,
     submission.offerRestrictions,
     submission.signatureName,
@@ -526,20 +532,6 @@ function detectDuplicateSubmission_(submission) {
 function computeFraudFlags_(submission, verificationSession, dupes) {
   const flags = [];
 
-  if (submission.emailDomainStatus === 'PUBLIC_EMAIL_DOMAIN') {
-    flags.push('Public email domain');
-  }
-  if (submission.emailDomainStatus === 'DOMAIN_MISMATCH') {
-    flags.push('Email domain mismatch');
-  }
-  if (submission.emailDomainStatus === 'NO_WEBSITE_PROVIDED') {
-    flags.push('Website not provided');
-  }
-
-  if (!websiteLooksValid_(submission.website)) {
-    flags.push('Website does not exist or is unreachable');
-  }
-
   if (dupes.duplicateBusiness) {
     flags.push('Duplicate business submitted');
   }
@@ -634,7 +626,8 @@ function buildSubmissionRow_(submission, session, context) {
     PERX_REPRESENTATIVE_TITLE,
     PERX_REPRESENTATIVE_PHONE,
     PERX_REPRESENTATIVE_EMAIL,
-    ''
+    '',
+    submission.maxDiscount
   ];
 }
 
@@ -975,7 +968,8 @@ function getOrCreateSubmissionSheet_() {
     'perxRepresentativeTitle',
     'perxRepresentativePhone',
     'perxRepresentativeEmail',
-    'perxCountersignedAt'
+    'perxCountersignedAt',
+    'maxDiscount'
   ]];
 
   const expectedColumns = headers[0].length;
@@ -1199,31 +1193,7 @@ function simulateBusinessMatch_(submission) {
     return 'Insufficient Data';
   }
 
-  if (submission.website && submission.emailDomainStatus === 'MATCHED_DOMAIN') {
-    return 'Likely Match';
-  }
-
-  return 'Manual Review Required';
-}
-
-function websiteLooksValid_(website) {
-  if (!website) {
-    return false;
-  }
-
-  try {
-    const normalized = /^https?:\/\//i.test(website) ? website : 'https://' + website;
-    const response = UrlFetchApp.fetch(normalized, {
-      muteHttpExceptions: true,
-      followRedirects: true,
-      validateHttpsCertificates: true
-    });
-
-    const code = Number(response.getResponseCode() || 0);
-    return code >= 200 && code < 500;
-  } catch (error) {
-    return false;
-  }
+  return 'Manual Confirmation Required';
 }
 
 function likelyBusinessName_(name) {
@@ -1321,6 +1291,26 @@ function extractSpreadsheetId_(value) {
 
 function cleanText_(value) {
   return String(value || '').trim();
+}
+
+function normalizeMoney_(value) {
+  const amount = Number(String(value || '').replace(/[^0-9.]/g, ''));
+  if (!isFinite(amount) || amount <= 0) {
+    return '';
+  }
+  return amount.toFixed(2);
+}
+
+function formatCurrency_(amount) {
+  return '$' + Number(amount || 0).toFixed(2);
+}
+
+function buildOfferDetails_(maxDiscount) {
+  return 'Up to ' + formatCurrency_(maxDiscount) + ' off each eligible PERX proximity pass.';
+}
+
+function buildOfferRestrictions_(maxDiscount) {
+  return 'Maximum discount is ' + formatCurrency_(maxDiscount) + ' per eligible claim. Each claimed discount starts a 24-hour cooldown before that customer can claim again.';
 }
 
 function normalizeEmail_(email) {

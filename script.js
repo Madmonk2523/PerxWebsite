@@ -1,17 +1,6 @@
 const BACKEND_ENDPOINT = "https://script.google.com/macros/s/AKfycbyq2YVCOdKC6TNwYEuzDpPn9SVHKAMPzXDuwcM0TTByvgP3Y9AyjZrToyzP6uyvbuID/exec";
 const AGREEMENT_VERSION = "2026.06.26";
 
-const FREE_EMAIL_DOMAINS = new Set([
-  "gmail.com",
-  "yahoo.com",
-  "outlook.com",
-  "hotmail.com",
-  "aol.com",
-  "icloud.com",
-  "protonmail.com",
-  "live.com"
-]);
-
 const state = {
   step: 1,
   totalSteps: 5,
@@ -51,7 +40,6 @@ const verifyEmailBtn = document.getElementById("verifyEmailBtn");
 const emailCodeInput = document.getElementById("emailCode");
 const emailVerifyStatus = document.getElementById("emailVerifyStatus");
 const phoneVerifyStatus = document.getElementById("phoneVerifyStatus");
-const domainCheckStatus = document.getElementById("domainCheckStatus");
 
 const agreementBox = document.getElementById("agreementBox");
 const agreementScrollStatus = document.getElementById("agreementScrollStatus");
@@ -151,15 +139,6 @@ function setupEventListeners() {
   if (onboardingForm) {
     onboardingForm.addEventListener("submit", submitAgreement);
 
-    const domainInputs = [onboardingForm.businessEmail, onboardingForm.website];
-    domainInputs.forEach((input) => {
-      if (!input) {
-        return;
-      }
-      input.addEventListener("input", updateDomainStatus);
-      input.addEventListener("blur", updateDomainStatus);
-    });
-
     [onboardingForm.businessEmail, onboardingForm.businessPhone].forEach((input) => {
       if (!input) {
         return;
@@ -218,9 +197,6 @@ function renderStep() {
     joinBtn.classList.toggle("is-hidden", !lastStep);
   }
 
-  if (state.step === 3) {
-    updateDomainStatus();
-  }
 }
 
 function validateCurrentStep() {
@@ -261,15 +237,9 @@ function validateCurrentStep() {
   }
 
   if (state.step === 2) {
-    if (!String(onboardingForm.offerDetails.value || "").trim()) {
-      setFeedback("Please describe the offer you want to provide PERX members.", "error");
-      onboardingForm.offerDetails.focus();
-      return false;
-    }
-
-    if (!String(onboardingForm.offerRestrictions.value || "").trim()) {
-      setFeedback("Please describe offer restrictions, including the 24-hour cooldown.", "error");
-      onboardingForm.offerRestrictions.focus();
+    if (!getMaxDiscountAmount()) {
+      setFeedback("Please enter the maximum discount amount.", "error");
+      onboardingForm.maxDiscount.focus();
       return false;
     }
 
@@ -440,40 +410,6 @@ async function verifyCode(channel) {
   }
 }
 
-function updateDomainStatus() {
-  if (!onboardingForm) {
-    return;
-  }
-
-  const email = String(onboardingForm.businessEmail.value || "").trim().toLowerCase();
-  const website = String(onboardingForm.website.value || "").trim();
-
-  if (!isValidEmail(email)) {
-    setStatusPill(domainCheckStatus, "Enter a valid business email first", "neutral");
-    return;
-  }
-
-  const emailDomain = getEmailDomain(email);
-  const websiteDomain = getWebsiteDomain(website);
-
-  if (FREE_EMAIL_DOMAINS.has(emailDomain)) {
-    setStatusPill(domainCheckStatus, "Public email domain. PERX may ask for extra confirmation.", "warning");
-    return;
-  }
-
-  if (!websiteDomain) {
-    setStatusPill(domainCheckStatus, "No website provided. PERX may confirm ownership manually.", "warning");
-    return;
-  }
-
-  if (emailDomain === websiteDomain || emailDomain.endsWith(`.${websiteDomain}`)) {
-    setStatusPill(domainCheckStatus, "Business email domain matched", "success");
-    return;
-  }
-
-  setStatusPill(domainCheckStatus, "Email and website domains differ. Extra confirmation may be needed.", "warning");
-}
-
 function resetVerificationState() {
   state.verificationSessionId = "";
   state.emailVerified = false;
@@ -529,6 +465,7 @@ async function submitAgreement(event) {
 function buildSubmissionPayload() {
   const email = String(onboardingForm.businessEmail.value || "").trim().toLowerCase();
   const website = String(onboardingForm.website.value || "").trim();
+  const maxDiscount = getMaxDiscountAmount();
 
   return {
     sessionId: state.verificationSessionId,
@@ -547,8 +484,9 @@ function buildSubmissionPayload() {
     signerRole: String(onboardingForm.signerRole.value || "").trim(),
     authorityBasis: String(onboardingForm.authorityBasis.value || "").trim(),
     notes: String(onboardingForm.notes.value || "").trim(),
-    offerDetails: String(onboardingForm.offerDetails.value || "").trim(),
-    offerRestrictions: String(onboardingForm.offerRestrictions.value || "").trim(),
+    maxDiscount,
+    offerDetails: buildOfferDetails(maxDiscount),
+    offerRestrictions: buildOfferRestrictions(maxDiscount),
     signatureName: String(onboardingForm.signatureName.value || "").trim(),
     signatureDate: String(onboardingForm.signatureDate.value || "").trim(),
     drawnSignature: serializeSignatureData(),
@@ -569,7 +507,7 @@ function buildSubmissionPayload() {
     approxLocation: buildApproxLocation(),
     emailVerificationStatus: state.emailVerified,
     phoneVerificationStatus: state.phoneVerified,
-    emailDomainStatus: getDomainStatusCode(email, website)
+    emailDomainStatus: "NOT_CHECKED"
   };
 }
 
@@ -614,7 +552,6 @@ function resetFormFlow() {
   if (emailCodeInput) {
     emailCodeInput.value = "";
   }
-  setStatusPill(domainCheckStatus, "Awaiting business email", "neutral");
   setStatusPill(emailVerifyStatus, "Not confirmed", "neutral");
   setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
   setStatusPill(agreementScrollStatus, "Scroll to the bottom to continue", "warning");
@@ -626,42 +563,25 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
 }
 
-function getEmailDomain(email) {
-  const parts = String(email || "").split("@");
-  return parts[1] ? parts[1].toLowerCase() : "";
-}
-
-function getWebsiteDomain(website) {
-  if (!website) {
+function getMaxDiscountAmount() {
+  const raw = String(onboardingForm.maxDiscount.value || "").trim();
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount <= 0) {
     return "";
   }
-
-  try {
-    const normalized = /^https?:\/\//i.test(website) ? website : `https://${website}`;
-    const url = new URL(normalized);
-    return url.hostname.replace(/^www\./i, "").toLowerCase();
-  } catch (error) {
-    return "";
-  }
+  return amount.toFixed(2);
 }
 
-function getDomainStatusCode(email, website) {
-  const emailDomain = getEmailDomain(email);
-  const websiteDomain = getWebsiteDomain(website);
+function formatCurrency(amount) {
+  return `$${Number(amount).toFixed(2)}`;
+}
 
-  if (FREE_EMAIL_DOMAINS.has(emailDomain)) {
-    return "PUBLIC_EMAIL_DOMAIN";
-  }
+function buildOfferDetails(maxDiscount) {
+  return `Up to ${formatCurrency(maxDiscount)} off each eligible PERX proximity pass.`;
+}
 
-  if (!websiteDomain) {
-    return "NO_WEBSITE_PROVIDED";
-  }
-
-  if (emailDomain === websiteDomain || emailDomain.endsWith(`.${websiteDomain}`)) {
-    return "MATCHED_DOMAIN";
-  }
-
-  return "DOMAIN_MISMATCH";
+function buildOfferRestrictions(maxDiscount) {
+  return `Maximum discount is ${formatCurrency(maxDiscount)} per eligible claim. Each claimed discount starts a 24-hour cooldown before that customer can claim again.`;
 }
 
 function getBrowserName() {

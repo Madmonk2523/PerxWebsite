@@ -140,27 +140,24 @@
           <section class="step is-hidden" data-step="2" aria-hidden="true">
             <h3>Your PERX Offer</h3>
             <p class="step-intro">
-              Example: 20&cent; off each eligible PERX proximity pass. Each claimed discount
-              starts a 24-hour cooldown before that customer can claim again.
+              Enter the maximum discount a PERX user can claim each time they qualify.
             </p>
             <label>
-              Offer Details
-              <textarea
-                name="offerDetails"
-                rows="6"
+              Maximum Discount Amount
+              <input
+                type="number"
+                name="maxDiscount"
                 required
-                placeholder="20&cent; off each eligible PERX proximity pass."
-              ></textarea>
+                min="0.01"
+                step="0.01"
+                inputmode="decimal"
+                placeholder="5.00"
+              />
             </label>
-            <label>
-              Restrictions
-              <textarea
-                name="offerRestrictions"
-                rows="4"
-                required
-                placeholder="Each claimed discount starts a 24-hour cooldown before that customer can claim again."
-              ></textarea>
-            </label>
+            <p class="meta-note">
+              PERX will list this as a maximum discount per eligible proximity pass. Each claimed
+              discount starts a 24-hour cooldown for that customer.
+            </p>
           </section>
 
           <section class="step is-hidden" data-step="3" aria-hidden="true">
@@ -210,10 +207,6 @@
               <p id="phoneVerifyStatus" class="status-pill neutral">Manual confirmation may be needed</p>
             </div>
 
-            <div class="verification-card">
-              <p class="verification-title">Business Domain Check</p>
-              <p id="domainCheckStatus" class="status-pill neutral">Awaiting business email</p>
-            </div>
           </section>
 
           <section class="step is-hidden" data-step="4" aria-hidden="true">
