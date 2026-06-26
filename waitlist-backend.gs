@@ -29,8 +29,9 @@ const ACTIONS = {
 };
 
 function doGet(e) {
-  const action = String((e.parameter && e.parameter.action) || '').trim();
-  const callback = String((e.parameter && e.parameter.callback) || '').trim();
+  const params = (e && e.parameter) || {};
+  const action = String(params.action || '').trim();
+  const callback = String(params.callback || '').trim();
 
   if (action === ACTIONS.ADMIN_APPROVE || action === ACTIONS.ADMIN_REJECT || action === ACTIONS.ADMIN_REQUEST_INFO) {
     const status = action === ACTIONS.ADMIN_APPROVE
@@ -38,12 +39,12 @@ function doGet(e) {
       : action === ACTIONS.ADMIN_REJECT
         ? 'Rejected'
         : 'More Info Requested';
-    const result = adminDecision_(e.parameter || {}, status);
+    const result = adminDecision_(params, status);
     return HtmlService.createHtmlOutput(buildAdminResultPage_(result, status));
   }
 
   try {
-    const result = routeAction_(action, e.parameter || {});
+    const result = routeAction_(action, params);
     if (callback) {
       return jsonpResponse_(callback, result);
     }
@@ -71,7 +72,7 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    const payload = JSON.parse((e.postData && e.postData.contents) || '{}');
+    const payload = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     const action = String(payload.action || '').trim();
     const result = routeAction_(action, payload);
     return jsonResponse_(result);
