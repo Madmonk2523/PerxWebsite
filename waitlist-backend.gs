@@ -1100,6 +1100,18 @@ function getOrCreateAuditSheet_() {
   return sheet;
 }
 
+function authorizeOnce_() {
+  getOrCreateSubmissionSheet_();
+  getOrCreateVerificationSheet_();
+  getOrCreateAuditSheet_();
+
+  MailApp.getRemainingDailyQuota();
+
+  const doc = DocumentApp.create('PERX authorization test');
+  const file = DriveApp.getFileById(doc.getId());
+  file.setTrashed(true);
+}
+
 function ensureHeaders_(sheet, headers, expectedColumns) {
   if (sheet.getMaxColumns() < expectedColumns) {
     sheet.insertColumnsAfter(sheet.getMaxColumns(), expectedColumns - sheet.getMaxColumns());
