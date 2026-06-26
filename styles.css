@@ -327,7 +327,9 @@ select:focus {
   border: 1px dashed rgba(15, 111, 255, 0.4);
   border-radius: 0.92rem;
   background: rgba(255, 255, 255, 0.95);
+  cursor: crosshair;
   touch-action: none;
+  user-select: none;
 }
 
 .signature-label {

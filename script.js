@@ -46,6 +46,7 @@ const agreementScrollStatus = document.getElementById("agreementScrollStatus");
 
 const signaturePad = document.getElementById("signaturePad");
 const clearSignatureBtn = document.getElementById("clearSignatureBtn");
+let resizeSignaturePad = () => {};
 
 const agreementNumberLabel = document.getElementById("agreementNumberLabel");
 const downloadPdfBtn = document.getElementById("downloadPdfBtn");
@@ -197,6 +198,9 @@ function renderStep() {
     joinBtn.classList.toggle("is-hidden", !lastStep);
   }
 
+  if (state.step === state.totalSteps) {
+    scheduleSignaturePadResize();
+  }
 }
 
 function validateCurrentStep() {
@@ -683,55 +687,125 @@ function setupSignaturePad() {
     return;
   }
 
-  const dpr = Math.max(window.devicePixelRatio || 1, 1);
-
   function resizeCanvas() {
     const rect = signaturePad.getBoundingClientRect();
-    signaturePad.width = Math.floor(rect.width * dpr);
-    signaturePad.height = Math.floor(rect.height * dpr);
+    if (!rect.width || !rect.height) {
+      return;
+    }
+
+    const dpr = Math.max(window.devicePixelRatio || 1, 1);
+    const nextWidth = Math.max(1, Math.floor(rect.width * dpr));
+    const nextHeight = Math.max(1, Math.floor(rect.height * dpr));
+
+    if (signaturePad.width !== nextWidth) {
+      signaturePad.width = nextWidth;
+    }
+    if (signaturePad.height !== nextHeight) {
+      signaturePad.height = nextHeight;
+    }
+
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     redrawSignature();
   }
 
-  function getPointFromEvent(event) {
+  resizeSignaturePad = resizeCanvas;
+
+  function getPointFromClient(clientX, clientY) {
     const rect = signaturePad.getBoundingClientRect();
     return {
-      x: Number((event.clientX - rect.left).toFixed(2)),
-      y: Number((event.clientY - rect.top).toFixed(2))
+      x: Number((clientX - rect.left).toFixed(2)),
+      y: Number((clientY - rect.top).toFixed(2))
     };
   }
 
   let drawing = false;
 
-  signaturePad.addEventListener("pointerdown", (event) => {
+  function startDrawing(clientX, clientY, event) {
+    event && event.preventDefault();
+    resizeCanvas();
     drawing = true;
-    signaturePad.setPointerCapture(event.pointerId);
-    const point = getPointFromEvent(event);
+    const point = getPointFromClient(clientX, clientY);
     state.signatureStrokes.push([point]);
-  });
+  }
 
-  signaturePad.addEventListener("pointermove", (event) => {
+  function continueDrawing(clientX, clientY, event) {
     if (!drawing || !state.signatureStrokes.length) {
       return;
     }
 
-    const point = getPointFromEvent(event);
+    event && event.preventDefault();
+    const point = getPointFromClient(clientX, clientY);
     const stroke = state.signatureStrokes[state.signatureStrokes.length - 1];
     stroke.push(point);
 
     drawStrokeSegment(stroke, ctx);
-  });
+  }
 
-  signaturePad.addEventListener("pointerup", () => {
+  function stopDrawing() {
     drawing = false;
-  });
+  }
 
-  signaturePad.addEventListener("pointercancel", () => {
-    drawing = false;
-  });
+  if (window.PointerEvent) {
+    signaturePad.addEventListener("pointerdown", (event) => {
+      if (signaturePad.setPointerCapture) {
+        try {
+          signaturePad.setPointerCapture(event.pointerId);
+        } catch (error) {
+          // Some browsers throw if capture is unavailable for this pointer.
+        }
+      }
+      startDrawing(event.clientX, event.clientY, event);
+    });
+
+    signaturePad.addEventListener("pointermove", (event) => {
+      continueDrawing(event.clientX, event.clientY, event);
+    });
+
+    signaturePad.addEventListener("pointerup", stopDrawing);
+    signaturePad.addEventListener("pointerleave", stopDrawing);
+    signaturePad.addEventListener("pointercancel", stopDrawing);
+  } else {
+    signaturePad.addEventListener("mousedown", (event) => {
+      startDrawing(event.clientX, event.clientY, event);
+    });
+
+    window.addEventListener("mousemove", (event) => {
+      continueDrawing(event.clientX, event.clientY, event);
+    });
+
+    window.addEventListener("mouseup", stopDrawing);
+
+    signaturePad.addEventListener("touchstart", (event) => {
+      const touch = event.touches && event.touches[0];
+      if (touch) {
+        startDrawing(touch.clientX, touch.clientY, event);
+      }
+    });
+
+    signaturePad.addEventListener("touchmove", (event) => {
+      const touch = event.touches && event.touches[0];
+      if (touch) {
+        continueDrawing(touch.clientX, touch.clientY, event);
+      }
+    });
+
+    signaturePad.addEventListener("touchend", stopDrawing);
+    signaturePad.addEventListener("touchcancel", stopDrawing);
+  }
 
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
+}
+
+function scheduleSignaturePadResize() {
+  if (!signaturePad) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    resizeSignaturePad();
+    window.setTimeout(resizeSignaturePad, 80);
+  });
 }
 
 function drawStrokeSegment(stroke, ctx) {
