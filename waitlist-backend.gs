@@ -7,6 +7,10 @@ const SETTINGS_SHEET_NAME = 'PERX Settings';
 const ADMIN_EMAIL = 'chasemallor@gmail.com';
 const SUPPORT_EMAIL = 'support@joinperx.com';
 const EMAIL_FROM_NAME = 'PERX';
+const PERX_REPRESENTATIVE_NAME = 'Beth Mallor';
+const PERX_REPRESENTATIVE_TITLE = 'Authorized Representative';
+const PERX_REPRESENTATIVE_PHONE = '646-989-0274';
+const PERX_REPRESENTATIVE_EMAIL = 'ChaseMallor@gmail.com';
 
 const AGREEMENT_PREFIX = 'PERX-';
 const AGREEMENT_START_SEQUENCE = 241;
@@ -119,6 +123,9 @@ function startVerification_(payload) {
   const emailCode = generateSixDigitCode_();
   const phoneCode = generateSixDigitCode_();
 
+  sendEmailCode_(businessEmail, ownerName || businessName, emailCode);
+  const phoneCodeSent = sendSmsCode_(businessPhone, phoneCode);
+
   const sheet = getOrCreateVerificationSheet_();
   sheet.appendRow([
     sessionId,
@@ -142,11 +149,9 @@ function startVerification_(payload) {
     cleanText_(payload.deviceInfo),
     '0',
     '0',
-    ''
+    '',
+    phoneCodeSent ? 'true' : 'false'
   ]);
-
-  sendEmailCode_(businessEmail, ownerName || businessName, emailCode);
-  sendSmsCodeFallback_(businessPhone, phoneCode);
 
   logAudit_('VERIFICATION_STARTED', {
     sessionId,
@@ -158,11 +163,13 @@ function startVerification_(payload) {
 
   return {
     ok: true,
-    message: 'Verification codes sent to your business email and phone.',
+    message: phoneCodeSent
+      ? 'Confirmation codes sent to your business email and phone.'
+      : 'Confirmation code sent to your business email. PERX may confirm the phone number before approval.',
     sessionId,
     expiresInMinutes: VERIFICATION_TTL_MINUTES,
-    devHints: buildDevHint_(),
-    verificationPolicy: 'Email and phone verification are required before submission.'
+    phoneCodeSent,
+    verificationPolicy: 'Business email confirmation is required before submission. Phone confirmation is recorded when SMS is connected.'
   };
 }
 
@@ -322,6 +329,11 @@ function adminDecision_(payload, status) {
   sheet.getRange(row, 37).setValue(formatIso_(new Date()));
   sheet.getRange(row, 38).setValue(adminNotes);
 
+  if (status === 'Approved') {
+    sheet.getRange(row, 39).setValue('Approved by PERX admin');
+    sheet.getRange(row, 50).setValue(formatIso_(new Date()));
+  }
+
   const businessEmail = normalizeEmail_(values[9]);
   const businessName = cleanText_(values[5]);
   const offer = cleanText_(values[14]);
@@ -345,7 +357,7 @@ function adminDecision_(payload, status) {
 function normalizeSubmissionPayload_(payload) {
   return {
     sessionId: cleanText_(payload.sessionId),
-    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.25',
+    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.26',
     businessName: cleanText_(payload.businessName),
     businessAddress: cleanText_(payload.businessAddress),
     city: cleanText_(payload.city),
@@ -357,8 +369,11 @@ function normalizeSubmissionPayload_(payload) {
     businessCategory: cleanText_(payload.businessCategory),
     ownerName: cleanText_(payload.ownerName),
     jobTitle: cleanText_(payload.jobTitle),
+    signerRole: cleanText_(payload.signerRole),
+    authorityBasis: cleanText_(payload.authorityBasis),
     notes: cleanText_(payload.notes),
     offerDetails: cleanText_(payload.offerDetails),
+    offerRestrictions: cleanText_(payload.offerRestrictions),
     signatureName: cleanText_(payload.signatureName),
     signatureDate: cleanText_(payload.signatureDate),
     drawnSignature: cleanText_(payload.drawnSignature),
@@ -368,6 +383,7 @@ function normalizeSubmissionPayload_(payload) {
     consentLegalBinding: cleanText_(payload.consentLegalBinding) === 'true',
     consentESign: cleanText_(payload.consentESign) === 'true',
     consentPerjury: cleanText_(payload.consentPerjury) === 'true',
+    consentCountersignature: cleanText_(payload.consentCountersignature) === 'true',
     formStartedAt: cleanText_(payload.formStartedAt),
     submittedAt: cleanText_(payload.submittedAt),
     ipAddress: cleanText_(payload.ipAddress),
@@ -384,6 +400,7 @@ function normalizeSubmissionPayload_(payload) {
 
 function validateSubmission_(submission) {
   const required = [
+    submission.sessionId,
     submission.businessName,
     submission.businessAddress,
     submission.city,
@@ -394,7 +411,10 @@ function validateSubmission_(submission) {
     submission.businessCategory,
     submission.ownerName,
     submission.jobTitle,
+    submission.signerRole,
+    submission.authorityBasis,
     submission.offerDetails,
+    submission.offerRestrictions,
     submission.signatureName,
     submission.signatureDate
   ];
@@ -409,8 +429,12 @@ function validateSubmission_(submission) {
     return 'Enter a valid business email address.';
   }
 
-  if (!submission.consentAuthority || !submission.consentAgreement || !submission.consentLegalBinding || !submission.consentESign || !submission.consentPerjury) {
+  if (!submission.consentAuthority || !submission.consentAgreement || !submission.consentLegalBinding || !submission.consentESign || !submission.consentPerjury || !submission.consentCountersignature) {
     return 'All required agreement confirmations must be accepted.';
+  }
+
+  if (!submission.emailVerificationStatus) {
+    return 'Business email confirmation is required before submission.';
   }
 
   return '';
@@ -421,22 +445,7 @@ function getSubmissionSession_(submission) {
     return getVerifiedSession_(submission.sessionId);
   }
 
-  return {
-    ok: true,
-    session: {
-      sessionId: 'Not required',
-      startedAt: cleanText_(submission.formStartedAt),
-      expiresAt: '',
-      businessName: submission.businessName,
-      businessEmail: submission.businessEmail,
-      businessPhone: submission.businessPhone,
-      website: submission.website,
-      ownerName: submission.ownerName,
-      emailVerifiedAt: '',
-      phoneVerifiedAt: '',
-      verificationIp: ''
-    }
-  };
+  return { ok: false, message: 'Business email confirmation is required before submission.', errorCode: 'VERIFICATION_REQUIRED' };
 }
 
 function getVerifiedSession_(sessionId) {
@@ -445,7 +454,7 @@ function getVerifiedSession_(sessionId) {
     return { ok: false, message: 'Verification session not found.', errorCode: 'SESSION_NOT_FOUND' };
   }
 
-  const values = rowMatch.sheet.getRange(rowMatch.row, 1, 1, 22).getValues()[0];
+  const values = rowMatch.sheet.getRange(rowMatch.row, 1, 1, 23).getValues()[0];
   const expiresAt = parseDate_(values[2]);
 
   if (expiresAt && expiresAt.getTime() < Date.now()) {
@@ -454,11 +463,20 @@ function getVerifiedSession_(sessionId) {
 
   const emailVerified = String(values[12]) === 'true';
   const phoneVerified = String(values[13]) === 'true';
+  const phoneCodeSent = String(values[22]) === 'true';
 
-  if (!emailVerified || !phoneVerified) {
+  if (!emailVerified) {
     return {
       ok: false,
-      message: 'Email and phone verification must both be completed.',
+      message: 'Business email confirmation must be completed.',
+      errorCode: 'VERIFICATION_REQUIRED'
+    };
+  }
+
+  if (phoneCodeSent && !phoneVerified) {
+    return {
+      ok: false,
+      message: 'Business phone confirmation must be completed.',
       errorCode: 'VERIFICATION_REQUIRED'
     };
   }
@@ -476,7 +494,8 @@ function getVerifiedSession_(sessionId) {
       ownerName: cleanText_(values[7]),
       emailVerifiedAt: String(values[14] || ''),
       phoneVerifiedAt: String(values[15] || ''),
-      verificationIp: String(values[21] || '')
+      verificationIp: String(values[21] || ''),
+      phoneCodeSent: phoneCodeSent
     }
   };
 }
@@ -591,6 +610,10 @@ function computeFraudFlags_(submission, verificationSession, dupes) {
     flags.push('Submission does not match verification session');
   }
 
+  if (!submission.phoneVerificationStatus) {
+    flags.push('Phone confirmation pending or manual');
+  }
+
   if (!flags.length) {
     flags.push('No automated fraud flags');
   }
@@ -640,6 +663,15 @@ function buildSubmissionRow_(submission, session, context) {
     '',
     context.ownershipVerified,
     formatIso_(new Date()),
+    '',
+    submission.signerRole,
+    submission.authorityBasis,
+    submission.offerRestrictions,
+    submission.consentCountersignature ? 'Yes' : 'No',
+    PERX_REPRESENTATIVE_NAME,
+    PERX_REPRESENTATIVE_TITLE,
+    PERX_REPRESENTATIVE_PHONE,
+    PERX_REPRESENTATIVE_EMAIL,
     ''
   ];
 }
@@ -649,10 +681,12 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   const doc = DocumentApp.create(docName);
   const body = doc.getBody();
 
-  body.appendParagraph('PERX Business Participation Agreement').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph('PERX Rewards Business Participation Agreement').setHeading(DocumentApp.ParagraphHeading.HEADING1);
   body.appendParagraph('Agreement ID: ' + agreementId);
   body.appendParagraph('Agreement Version: ' + submission.agreementVersion);
   body.appendParagraph('Submission Timestamp: ' + formatIso_(submittedAt));
+  body.appendParagraph('Effective Date: This Agreement becomes effective when signed by the Business and approved/countersigned by PERX Rewards.');
+  body.appendParagraph('Launch Date: The date PERX Rewards is first made publicly available for download and use by the general public.');
 
   body.appendParagraph('');
   body.appendParagraph('Business Information').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -667,13 +701,48 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   body.appendParagraph('Authorized Representative').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph('Full Name: ' + submission.ownerName);
   body.appendParagraph('Job Title: ' + submission.jobTitle);
+  body.appendParagraph('Signer Relationship: ' + submission.signerRole);
+  body.appendParagraph('Authority Basis: ' + submission.authorityBasis);
   body.appendParagraph('Typed Legal Signature Name: ' + submission.signatureName);
   body.appendParagraph('Signature Date: ' + submission.signatureDate);
   body.appendParagraph('Drawn Signature Included: ' + (submission.drawnSignaturePresent ? 'Yes' : 'No'));
 
   body.appendParagraph('');
-  body.appendParagraph('Promotion').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph(submission.offerDetails);
+  body.appendParagraph('Agreed Offer').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('Offer: ' + submission.offerDetails);
+  body.appendParagraph('Restrictions: ' + submission.offerRestrictions);
+
+  body.appendParagraph('');
+  body.appendParagraph('1. Participation').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('The Business agrees to participate in PERX Rewards and authorizes PERX to list and promote the Business through the PERX mobile application, website, social media, printed materials, and other promotional channels.');
+
+  body.appendParagraph('');
+  body.appendParagraph('2. Agreed Offer').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('The Business agrees to provide the offer listed above to verified PERX users beginning on the Launch Date. The Business agrees to honor this offer whenever a customer properly verifies eligibility through PERX. Any change to the offer must be approved by PERX in writing before taking effect.');
+
+  body.appendParagraph('');
+  body.appendParagraph('3. Participation Term').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('This Agreement becomes effective when signed by both parties. The Business participation begins on the Launch Date. The Business agrees to remain an active participant on PERX and honor the agreed offer for twelve (12) months beginning on the Launch Date. After the initial 12-month period, this Agreement automatically renews month-to-month unless either party provides at least 30 days written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date.');
+
+  body.appendParagraph('');
+  body.appendParagraph('4. Business Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('The Business agrees to honor the agreed offer, maintain accurate business information, notify PERX if its contact information or offer changes, and comply with applicable laws. The Business grants PERX permission to use its business name, logo, address, website, business hours, photographs approved by the Business, business description, and social media handles solely to promote the Business through PERX. The Business confirms it has the authority to grant this permission.');
+
+  body.appendParagraph('');
+  body.appendParagraph('5. PERX Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('PERX agrees to operate its platform in good faith and make reasonable efforts to maintain accurate Business information. PERX does not guarantee customer traffic, sales, revenue, or profits.');
+
+  body.appendParagraph('');
+  body.appendParagraph('6. Ending This Agreement').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('The Business may end this Agreement before the end of the initial 12-month term only if the Business permanently closes; the Business is sold to a new owner who chooses not to participate; continuing the agreed offer becomes unlawful; or PERX agrees in writing. PERX may immediately remove the Business from the platform if the Business repeatedly refuses to honor the agreed offer, provides false information, engages in fraudulent or illegal activity, or materially breaches this Agreement.');
+
+  body.appendParagraph('');
+  body.appendParagraph('7. Responsibility').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('Each party is responsible for its own actions. The Business is responsible for its products, services, pricing, refunds, taxes, customer service, and compliance with applicable law. PERX is not responsible for disputes between the Business and its customers.');
+
+  body.appendParagraph('');
+  body.appendParagraph('8. General Terms').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('This Agreement is governed by the laws of the State of New York. This Agreement contains the complete agreement between PERX and the Business regarding participation in PERX Rewards. Any changes to this Agreement must be in writing and signed by both parties. If any part of this Agreement is found to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.');
 
   body.appendParagraph('');
   body.appendParagraph('Agreement Confirmations').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -682,6 +751,24 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   body.appendParagraph('Legally binding acknowledgment: ' + yesNo_(submission.consentLegalBinding));
   body.appendParagraph('Electronic signature consent: ' + yesNo_(submission.consentESign));
   body.appendParagraph('Perjury declaration accepted: ' + yesNo_(submission.consentPerjury));
+  body.appendParagraph('PERX countersignature acknowledgment: ' + yesNo_(submission.consentCountersignature));
+
+  body.appendParagraph('');
+  body.appendParagraph('Signatures').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('PERX Rewards');
+  body.appendParagraph('Representative: ' + PERX_REPRESENTATIVE_NAME);
+  body.appendParagraph('Title: ' + PERX_REPRESENTATIVE_TITLE);
+  body.appendParagraph('Phone: ' + PERX_REPRESENTATIVE_PHONE);
+  body.appendParagraph('Email: ' + PERX_REPRESENTATIVE_EMAIL);
+  body.appendParagraph('PERX Signature: Pending PERX approval/countersignature in the admin approval workflow.');
+  body.appendParagraph('');
+  body.appendParagraph('Business');
+  body.appendParagraph('Business Name: ' + submission.businessName);
+  body.appendParagraph('Authorized Representative: ' + submission.ownerName);
+  body.appendParagraph('Title: ' + submission.jobTitle);
+  body.appendParagraph('Signature: /s/ ' + submission.signatureName);
+  body.appendParagraph('Printed Name: ' + submission.signatureName);
+  body.appendParagraph('Date: ' + submission.signatureDate);
 
   body.appendParagraph('');
   body.appendParagraph('Verification and Metadata').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -721,14 +808,15 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
 }
 
 function sendBusinessConfirmation_(submission, agreementId, pdfFile) {
-  const subject = 'Welcome to PERX!';
+  const subject = 'PERX agreement received';
   const htmlBody =
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
-    '<h2 style="margin:0 0 12px;">Welcome to PERX!</h2>' +
-    '<p>Thank you for joining PERX.</p>' +
-    '<p>Your agreement has been received and is now pending review.</p>' +
+    '<h2 style="margin:0 0 12px;">PERX agreement received</h2>' +
+    '<p>Thank you for applying to join PERX Rewards.</p>' +
+    '<p>Your signed Business Participation Agreement has been received. It becomes effective only after PERX approves and countersigns it.</p>' +
     '<p><strong>Agreement Number:</strong> ' + escapeHtml_(agreementId) + '</p>' +
     '<p><strong>Your Offer:</strong> ' + escapeHtml_(submission.offerDetails) + '</p>' +
+    '<p><strong>Restrictions:</strong> ' + escapeHtml_(submission.offerRestrictions) + '</p>' +
     '<p>If you have any questions, contact ' + escapeHtml_(SUPPORT_EMAIL) + '.</p>' +
     '</div>';
 
@@ -737,11 +825,12 @@ function sendBusinessConfirmation_(submission, agreementId, pdfFile) {
     subject: subject,
     htmlBody: htmlBody,
     body:
-      'Welcome to PERX!\n\n' +
-      'Thank you for joining PERX.\n' +
-      'Your agreement has been received and is pending review.\n\n' +
+      'PERX agreement received\n\n' +
+      'Thank you for applying to join PERX Rewards.\n' +
+      'Your signed Business Participation Agreement has been received. It becomes effective only after PERX approves and countersigns it.\n\n' +
       'Agreement Number: ' + agreementId + '\n' +
       'Offer: ' + submission.offerDetails + '\n' +
+      'Restrictions: ' + submission.offerRestrictions + '\n' +
       'Support: ' + SUPPORT_EMAIL,
     name: EMAIL_FROM_NAME,
     attachments: pdfFile ? [pdfFile.getBlob()] : []
@@ -762,9 +851,12 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
     '<h2 style="margin:0 0 12px;">New business submitted</h2>' +
     '<p><strong>Business Name:</strong> ' + escapeHtml_(submission.businessName) + '</p>' +
     '<p><strong>Owner:</strong> ' + escapeHtml_(submission.ownerName) + '</p>' +
+    '<p><strong>Signer Role:</strong> ' + escapeHtml_(submission.signerRole) + '</p>' +
+    '<p><strong>Authority Basis:</strong> ' + escapeHtml_(submission.authorityBasis) + '</p>' +
     '<p><strong>Email:</strong> ' + escapeHtml_(submission.businessEmail) + '</p>' +
     '<p><strong>Phone:</strong> ' + escapeHtml_(submission.businessPhone) + '</p>' +
     '<p><strong>Offer:</strong> ' + escapeHtml_(submission.offerDetails) + '</p>' +
+    '<p><strong>Restrictions:</strong> ' + escapeHtml_(submission.offerRestrictions) + '</p>' +
     '<p><strong>Agreement ID:</strong> ' + escapeHtml_(agreementId) + '</p>' +
     '<p><strong>Status:</strong> ' + escapeHtml_(status) + '</p>' +
     '<p><strong>Verification:</strong> Email ' +
@@ -787,9 +879,12 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
       'New business submitted\n\n' +
       'Business: ' + submission.businessName + '\n' +
       'Owner: ' + submission.ownerName + '\n' +
+      'Signer Role: ' + submission.signerRole + '\n' +
+      'Authority Basis: ' + submission.authorityBasis + '\n' +
       'Email: ' + submission.businessEmail + '\n' +
       'Phone: ' + submission.businessPhone + '\n' +
       'Offer: ' + submission.offerDetails + '\n' +
+      'Restrictions: ' + submission.offerRestrictions + '\n' +
       'Agreement ID: ' + agreementId + '\n' +
       'Status: ' + status + '\n' +
       'Verification: Email ' + verificationStatusLabel_(submission.emailVerificationStatus) +
@@ -809,6 +904,9 @@ function sendAdminDecisionEmail_(toEmail, businessName, agreementId, status, off
   }
 
   const subject = 'PERX Application Update: ' + status;
+  const approvalNote = status === 'Approved'
+    ? '<p>PERX approval/countersignature has been recorded for this agreement.</p>'
+    : '';
   const htmlBody =
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
     '<h2 style="margin:0 0 12px;">PERX Application Update</h2>' +
@@ -816,6 +914,7 @@ function sendAdminDecisionEmail_(toEmail, businessName, agreementId, status, off
     '<p>Agreement ID: ' + escapeHtml_(agreementId) + '</p>' +
     '<p>Status: <strong>' + escapeHtml_(status) + '</strong></p>' +
     '<p>Offer: ' + escapeHtml_(offer) + '</p>' +
+    approvalNote +
     '<p>Notes: ' + escapeHtml_(notes || 'N/A') + '</p>' +
     '<p>For support, email ' + escapeHtml_(SUPPORT_EMAIL) + '.</p>' +
     '</div>';
@@ -829,6 +928,7 @@ function sendAdminDecisionEmail_(toEmail, businessName, agreementId, status, off
       'Business: ' + businessName + '\n' +
       'Agreement ID: ' + agreementId + '\n' +
       'Status: ' + status + '\n' +
+      (status === 'Approved' ? 'PERX approval/countersignature has been recorded for this agreement.\n' : '') +
       'Offer: ' + offer + '\n' +
       'Notes: ' + (notes || 'N/A') + '\n\n' +
       'Support: ' + SUPPORT_EMAIL,
@@ -855,13 +955,50 @@ function sendEmailCode_(toEmail, displayName, code) {
   });
 }
 
-function sendSmsCodeFallback_(phoneNumber, code) {
-  // Placeholder for SMS provider integration (Twilio/Vonage/etc.).
-  // The code is logged to audit for operational traceability until provider is integrated.
-  logAudit_('SMS_CODE_ISSUED', {
-    phone: phoneNumber,
-    codePreview: maskCode_(code)
-  });
+function sendSmsCode_(phoneNumber, code) {
+  const props = PropertiesService.getScriptProperties();
+  const accountSid = cleanText_(props.getProperty('TWILIO_ACCOUNT_SID'));
+  const authToken = cleanText_(props.getProperty('TWILIO_AUTH_TOKEN'));
+  const fromPhone = cleanText_(props.getProperty('TWILIO_FROM_PHONE'));
+
+  if (!accountSid || !authToken || !fromPhone) {
+    logAudit_('SMS_CODE_NOT_SENT', {
+      phone: phoneNumber,
+      reason: 'Twilio not configured'
+    });
+    return false;
+  }
+
+  try {
+    const response = UrlFetchApp.fetch('https://api.twilio.com/2010-04-01/Accounts/' + encodeURIComponent(accountSid) + '/Messages.json', {
+      method: 'post',
+      muteHttpExceptions: true,
+      payload: {
+        To: phoneNumber,
+        From: fromPhone,
+        Body: 'Your PERX phone confirmation code is ' + code + '. It expires in ' + VERIFICATION_TTL_MINUTES + ' minutes.'
+      },
+      headers: {
+        Authorization: 'Basic ' + Utilities.base64Encode(accountSid + ':' + authToken)
+      }
+    });
+
+    const statusCode = Number(response.getResponseCode() || 0);
+    const sent = statusCode >= 200 && statusCode < 300;
+
+    logAudit_(sent ? 'SMS_CODE_SENT' : 'SMS_CODE_FAILED', {
+      phone: phoneNumber,
+      statusCode: statusCode
+    });
+
+    return sent;
+  } catch (error) {
+    logAudit_('SMS_CODE_FAILED', {
+      phone: phoneNumber,
+      error: String(error && error.message || error)
+    });
+    return false;
+  }
 }
 
 function getOrCreateSubmissionSheet_() {
@@ -913,7 +1050,16 @@ function getOrCreateSubmissionSheet_() {
     'adminNotes',
     'ownershipVerified',
     'updatedAt',
-    'internalTags'
+    'internalTags',
+    'signerRole',
+    'authorityBasis',
+    'offerRestrictions',
+    'countersignatureAcknowledged',
+    'perxRepresentativeName',
+    'perxRepresentativeTitle',
+    'perxRepresentativePhone',
+    'perxRepresentativeEmail',
+    'perxCountersignedAt'
   ]];
 
   const expectedColumns = headers[0].length;
@@ -951,7 +1097,8 @@ function getOrCreateVerificationSheet_() {
     'deviceInfo',
     'emailAttempts',
     'phoneAttempts',
-    'lastVerificationIp'
+    'lastVerificationIp',
+    'phoneCodeSent'
   ]];
 
   const expectedColumns = headers[0].length;
@@ -1188,10 +1335,6 @@ function isHighRiskLocation_(approxLocation) {
   return false;
 }
 
-function buildDevHint_() {
-  return '[If SMS provider is not connected yet, use admin-managed fallback verification.]';
-}
-
 function createSessionId_() {
   return Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 8);
 }
@@ -1307,7 +1450,7 @@ function yesNo_(value) {
 }
 
 function verificationStatusLabel_(value) {
-  return value ? 'Verified' : 'Not required';
+  return value ? 'Confirmed' : 'Manual confirmation pending';
 }
 
 function safeJsonParse_(raw) {

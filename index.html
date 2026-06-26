@@ -63,7 +63,7 @@
         <header class="wizard-header">
           <p class="eyebrow">Business Onboarding</p>
           <h2>Official Business Participation Signup</h2>
-          <p class="step-counter" id="stepCounter">Step 1 of 4</p>
+          <p class="step-counter" id="stepCounter">Step 1 of 5</p>
           <div class="progress-track" aria-hidden="true">
             <span id="progressFill"></span>
           </div>
@@ -139,76 +139,177 @@
 
           <section class="step is-hidden" data-step="2" aria-hidden="true">
             <h3>Your PERX Offer</h3>
-            <p class="step-intro">What reward would you like to offer PERX members?</p>
+            <p class="step-intro">
+              Example: 20&cent; off each eligible PERX proximity pass. Each claimed discount
+              starts a 24-hour cooldown before that customer can claim again.
+            </p>
             <label>
               Offer Details
               <textarea
                 name="offerDetails"
                 rows="6"
                 required
-                placeholder="Examples: 20 cents off or 25 cents off per pass by proximity, or a custom offer per pass."
+                placeholder="20&cent; off each eligible PERX proximity pass."
+              ></textarea>
+            </label>
+            <label>
+              Restrictions
+              <textarea
+                name="offerRestrictions"
+                rows="4"
+                required
+                placeholder="Each claimed discount starts a 24-hour cooldown before that customer can claim again."
               ></textarea>
             </label>
           </section>
 
           <section class="step is-hidden" data-step="3" aria-hidden="true">
+            <h3>Confirm Authority</h3>
+            <p class="step-intro">
+              Confirm that the signer can bind this business to the PERX Rewards agreement.
+            </p>
+
+            <div class="field-grid two-col">
+              <label>
+                Signer Relationship
+                <select name="signerRole" required>
+                  <option value="">Select one</option>
+                  <option value="Owner">Owner</option>
+                  <option value="Authorized Representative">Authorized Representative</option>
+                  <option value="Manager with Authorization">Manager with Authorization</option>
+                  <option value="Corporate Officer">Corporate Officer</option>
+                </select>
+              </label>
+              <label>
+                Authority Basis
+                <input
+                  type="text"
+                  name="authorityBasis"
+                  required
+                  placeholder="Owner, written authorization, officer role"
+                />
+              </label>
+            </div>
+
+            <div class="verification-card">
+              <p class="verification-title">Business Email Confirmation</p>
+              <button type="button" class="secondary" id="sendCodesBtn">Send Email Code</button>
+              <label>
+                Enter 6-digit email code
+                <input type="text" id="emailCode" maxlength="6" inputmode="numeric" placeholder="000000" />
+              </label>
+              <button type="button" class="secondary" id="verifyEmailBtn">Confirm Email</button>
+              <p id="emailVerifyStatus" class="status-pill neutral">Not confirmed</p>
+            </div>
+
+            <div class="verification-card">
+              <p class="verification-title">Business Phone Confirmation</p>
+              <p class="meta-note">
+                If SMS is connected, a phone code will be sent. Otherwise PERX may confirm this
+                number before approval.
+              </p>
+              <label>
+                Enter 6-digit phone code
+                <input type="text" id="phoneCode" maxlength="6" inputmode="numeric" placeholder="000000" disabled />
+              </label>
+              <button type="button" class="secondary" id="verifyPhoneBtn" disabled>Confirm Phone</button>
+              <p id="phoneVerifyStatus" class="status-pill neutral">Manual confirmation may be needed</p>
+            </div>
+
+            <div class="verification-card">
+              <p class="verification-title">Business Domain Check</p>
+              <p id="domainCheckStatus" class="status-pill neutral">Awaiting business email</p>
+            </div>
+          </section>
+
+          <section class="step is-hidden" data-step="4" aria-hidden="true">
             <h3>Business Participation Agreement</h3>
             <p class="step-intro">Please read this agreement carefully before joining PERX.</p>
 
             <div class="agreement-box" id="agreementBox">
               <article>
-                <h4>PERX Business Participation Agreement</h4>
+                <h4>PERX Rewards Business Participation Agreement</h4>
                 <p>
-                  This Business Participation Agreement (Agreement) is entered between PERX and
-                  the participating business identified during signup (Business). By completing this
-                  onboarding workflow, Business agrees to provide the selected offer to eligible PERX
-                  members and to participate according to the terms below.
+                  Effective Date: This Agreement becomes effective when signed by the Business and
+                  approved/countersigned by PERX Rewards. For this Agreement, the Launch Date means
+                  the date PERX Rewards is first made publicly available for download and use by the
+                  general public.
                 </p>
                 <p>
-                  1. Offer Fulfillment: Business will honor the offer submitted in this application for
-                  valid PERX member transactions, subject to normal inventory and operating
-                  limitations.
+                  This Business Participation Agreement ("Agreement") is entered into between PERX
+                  Rewards ("PERX") and the Business identified in this onboarding form. By signing
+                  this Agreement, the person signing on behalf of the Business represents that they
+                  are authorized to enter into this Agreement on the Business's behalf.
                 </p>
                 <p>
-                  2. Accuracy of Information: Business certifies all submitted business information,
-                  ownership/authorization statements, and contact details are accurate and current.
+                  Business Information: the Business name, address, representative name, title,
+                  phone, and email are the values submitted in this onboarding form.
                 </p>
                 <p>
-                  3. Authorized Representative: Signer certifies under penalty of perjury that they are
-                  the business owner or an authorized representative with authority to enter legally
-                  binding agreements.
+                  1. Participation: The Business agrees to participate in PERX Rewards and
+                  authorizes PERX to list and promote the Business through the PERX mobile
+                  application, website, social media, printed materials, and other promotional
+                  channels.
                 </p>
                 <p>
-                  4. Verification and Review: PERX may perform identity, ownership, and business
-                  record verification, including domain checks, business listing checks, duplicate
-                  analysis, and fraud screening. Submissions may remain pending until manual review
-                  completes.
+                  2. Agreed Offer: The Business agrees to provide the offer and restrictions
+                  submitted in this form to verified PERX users beginning on the Launch Date. The
+                  Business agrees to honor this offer whenever a customer properly verifies
+                  eligibility through PERX. Any change to the offer must be approved by PERX in
+                  writing before taking effect.
                 </p>
                 <p>
-                  5. Activation: No business is activated in PERX until approved by a PERX
-                  administrator.
+                  3. Participation Term: This Agreement becomes effective when signed by both
+                  parties. The Business's participation begins on the Launch Date. The Business
+                  agrees to remain an active participant on PERX and honor the agreed offer for
+                  twelve (12) months beginning on the Launch Date. After the initial 12-month
+                  period, this Agreement automatically renews month-to-month unless either party
+                  provides at least 30 days' written notice. If PERX has not publicly launched within
+                  12 months after this Agreement is signed, either party may cancel this Agreement
+                  by written notice before the Launch Date.
                 </p>
                 <p>
-                  6. Audit Trail and Records: PERX retains signed agreement records, metadata,
-                  verification status, and submission logs for compliance, security, and operational
-                  purposes.
+                  4. Business Responsibilities: The Business agrees to honor the agreed offer,
+                  maintain accurate business information, notify PERX if its contact information or
+                  offer changes, and comply with applicable laws. The Business grants PERX
+                  permission to use its business name, logo, address, website, business hours,
+                  photographs approved by the Business, business description, and social media
+                  handles solely to promote the Business through PERX. The Business confirms it has
+                  the authority to grant this permission.
                 </p>
                 <p>
-                  7. Electronic Signatures: Business agrees that an electronic signature and related
-                  electronic consent have the same legal effect as a handwritten signature.
+                  5. PERX Responsibilities: PERX agrees to operate its platform in good faith and
+                  make reasonable efforts to maintain accurate Business information. PERX does not
+                  guarantee customer traffic, sales, revenue, or profits.
                 </p>
                 <p>
-                  8. Modifications: Agreement versions may change over time. Business remains bound
-                  to the version accepted at signature time unless superseded by a later signed
-                  agreement.
+                  6. Ending This Agreement: The Business may end this Agreement before the end of
+                  the initial 12-month term only if the Business permanently closes; the Business is
+                  sold to a new owner who chooses not to participate; continuing the agreed offer
+                  becomes unlawful; or PERX agrees in writing. PERX may immediately remove the
+                  Business from the platform if the Business repeatedly refuses to honor the agreed
+                  offer, provides false information, engages in fraudulent or illegal activity, or
+                  materially breaches this Agreement.
                 </p>
                 <p>
-                  9. Contact and Support: PERX may contact Business regarding onboarding,
-                  verification, compliance, or partnership operations.
+                  7. Responsibility: Each party is responsible for its own actions. The Business is
+                  responsible for its products, services, pricing, refunds, taxes, customer service,
+                  and compliance with applicable law. PERX is not responsible for disputes between
+                  the Business and its customers.
                 </p>
                 <p>
-                  10. Termination: PERX reserves the right to reject or remove participation for
-                  suspected fraud, abuse, legal non-compliance, or policy violations.
+                  8. General Terms: This Agreement is governed by the laws of the State of New
+                  York. This Agreement contains the complete agreement between PERX and the
+                  Business regarding participation in PERX Rewards. Any changes to this Agreement
+                  must be in writing and signed by both parties. If any part of this Agreement is
+                  found to be invalid or unenforceable, the remaining provisions shall remain in full
+                  force and effect.
+                </p>
+                <p>
+                  9. Signatures: This Agreement becomes effective when signed by both parties. PERX
+                  Rewards Representative: Beth Mallor. Title: Authorized Representative. Phone:
+                  646-989-0274. Email: ChaseMallor@gmail.com. Business signature information is
+                  submitted in the Electronic Signature step.
                 </p>
                 <p class="agreement-end">End of Agreement</p>
               </article>
@@ -230,15 +331,19 @@
             </label>
             <label class="checkbox-row">
               <input type="checkbox" name="eSignConsent" required />
-              I agree that my electronic signature has the same legal effect as my handwritten signature.
+              I agree that my electronic signature has the same legal effect as my handwritten signature and that I can access, download, and retain the electronic agreement.
             </label>
             <label class="checkbox-row">
               <input type="checkbox" name="penaltyPerjury" required />
               I certify under penalty of perjury that I am the owner of this business or have authority to enter into legally binding agreements on behalf of this business.
             </label>
+            <label class="checkbox-row">
+              <input type="checkbox" name="countersignatureConsent" required />
+              I understand this Agreement becomes effective only after PERX approves and countersigns the Business submission.
+            </label>
           </section>
 
-          <section class="step is-hidden" data-step="4" aria-hidden="true">
+          <section class="step is-hidden" data-step="5" aria-hidden="true">
             <h3>Electronic Signature</h3>
             <div class="field-grid two-col">
               <label>
@@ -280,7 +385,7 @@
           Thank you for applying to become a PERX partner. We've received your signed Business
           Participation Agreement.
         </p>
-        <p>Our team will review your submission shortly. You will receive an email once approved.</p>
+        <p>PERX will review and countersign the agreement if approved. You will receive an email update.</p>
         <p id="agreementNumberLabel" class="agreement-number"></p>
         <div class="success-actions">
           <button type="button" class="secondary" id="returnHomeBtn">Return Home</button>

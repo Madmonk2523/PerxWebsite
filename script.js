@@ -1,5 +1,5 @@
 const BACKEND_ENDPOINT = "https://script.google.com/macros/s/AKfycbyq2YVCOdKC6TNwYEuzDpPn9SVHKAMPzXDuwcM0TTByvgP3Y9AyjZrToyzP6uyvbuID/exec";
-const AGREEMENT_VERSION = "2026.06.25";
+const AGREEMENT_VERSION = "2026.06.26";
 
 const FREE_EMAIL_DOMAINS = new Set([
   "gmail.com",
@@ -14,8 +14,12 @@ const FREE_EMAIL_DOMAINS = new Set([
 
 const state = {
   step: 1,
-  totalSteps: 4,
+  totalSteps: 5,
   agreementReachedBottom: false,
+  verificationSessionId: "",
+  emailVerified: false,
+  phoneVerified: false,
+  phoneVerificationAvailable: false,
   signatureStrokes: [],
   telemetry: {
     ipAddress: "",
@@ -42,6 +46,15 @@ const formFeedback = document.getElementById("formFeedback");
 const stepCounter = document.getElementById("stepCounter");
 const progressFill = document.getElementById("progressFill");
 const stepElements = Array.from(document.querySelectorAll(".step"));
+
+const sendCodesBtn = document.getElementById("sendCodesBtn");
+const verifyEmailBtn = document.getElementById("verifyEmailBtn");
+const verifyPhoneBtn = document.getElementById("verifyPhoneBtn");
+const emailCodeInput = document.getElementById("emailCode");
+const phoneCodeInput = document.getElementById("phoneCode");
+const emailVerifyStatus = document.getElementById("emailVerifyStatus");
+const phoneVerifyStatus = document.getElementById("phoneVerifyStatus");
+const domainCheckStatus = document.getElementById("domainCheckStatus");
 
 const agreementBox = document.getElementById("agreementBox");
 const agreementScrollStatus = document.getElementById("agreementScrollStatus");
@@ -119,6 +132,18 @@ function setupEventListeners() {
     clearSignatureBtn.addEventListener("click", clearSignature);
   }
 
+  if (sendCodesBtn) {
+    sendCodesBtn.addEventListener("click", sendVerificationCodes);
+  }
+
+  if (verifyEmailBtn) {
+    verifyEmailBtn.addEventListener("click", () => verifyCode("email"));
+  }
+
+  if (verifyPhoneBtn) {
+    verifyPhoneBtn.addEventListener("click", () => verifyCode("phone"));
+  }
+
   if (returnHomeBtn) {
     returnHomeBtn.addEventListener("click", () => {
       successPanel.classList.add("is-hidden");
@@ -132,6 +157,22 @@ function setupEventListeners() {
 
   if (onboardingForm) {
     onboardingForm.addEventListener("submit", submitAgreement);
+
+    const domainInputs = [onboardingForm.businessEmail, onboardingForm.website];
+    domainInputs.forEach((input) => {
+      if (!input) {
+        return;
+      }
+      input.addEventListener("input", updateDomainStatus);
+      input.addEventListener("blur", updateDomainStatus);
+    });
+
+    [onboardingForm.businessEmail, onboardingForm.businessPhone].forEach((input) => {
+      if (!input) {
+        return;
+      }
+      input.addEventListener("input", resetVerificationState);
+    });
   }
 }
 
@@ -184,6 +225,9 @@ function renderStep() {
     joinBtn.classList.toggle("is-hidden", !lastStep);
   }
 
+  if (state.step === 3) {
+    updateDomainStatus();
+  }
 }
 
 function validateCurrentStep() {
@@ -230,11 +274,49 @@ function validateCurrentStep() {
       return false;
     }
 
+    if (!String(onboardingForm.offerRestrictions.value || "").trim()) {
+      setFeedback("Please describe offer restrictions, including the 24-hour cooldown.", "error");
+      onboardingForm.offerRestrictions.focus();
+      return false;
+    }
+
     setFeedback("", "");
     return true;
   }
 
   if (state.step === 3) {
+    if (!String(onboardingForm.signerRole.value || "").trim()) {
+      setFeedback("Please select the signer's relationship to the business.", "error");
+      onboardingForm.signerRole.focus();
+      return false;
+    }
+
+    if (!String(onboardingForm.authorityBasis.value || "").trim()) {
+      setFeedback("Please explain the signer's authority to bind the business.", "error");
+      onboardingForm.authorityBasis.focus();
+      return false;
+    }
+
+    if (!state.verificationSessionId) {
+      setFeedback("Please send and confirm the business email code before continuing.", "error");
+      return false;
+    }
+
+    if (!state.emailVerified) {
+      setFeedback("Business email confirmation is required before continuing.", "error");
+      return false;
+    }
+
+    if (state.phoneVerificationAvailable && !state.phoneVerified) {
+      setFeedback("Please confirm the business phone code before continuing.", "error");
+      return false;
+    }
+
+    setFeedback("", "");
+    return true;
+  }
+
+  if (state.step === 4) {
     if (!state.agreementReachedBottom) {
       setFeedback("Please scroll to the end of the agreement before continuing.", "error");
       return false;
@@ -245,7 +327,8 @@ function validateCurrentStep() {
       "agreeTerms",
       "legalBinding",
       "eSignConsent",
-      "penaltyPerjury"
+      "penaltyPerjury",
+      "countersignatureConsent"
     ];
 
     for (const name of checkboxNames) {
@@ -261,7 +344,7 @@ function validateCurrentStep() {
     return true;
   }
 
-  if (state.step === 4) {
+  if (state.step === 5) {
     if (!String(onboardingForm.signatureName.value || "").trim()) {
       setFeedback("Please enter your full legal name for electronic signature.", "error");
       onboardingForm.signatureName.focus();
@@ -281,10 +364,188 @@ function validateCurrentStep() {
   return true;
 }
 
+async function sendVerificationCodes() {
+  if (!onboardingForm) {
+    return;
+  }
+
+  const email = String(onboardingForm.businessEmail.value || "").trim().toLowerCase();
+  const phone = String(onboardingForm.businessPhone.value || "").trim();
+  const businessName = String(onboardingForm.businessName.value || "").trim();
+
+  if (!businessName || !isValidEmail(email) || phone.length < 7) {
+    setFeedback("Complete business name, valid email, and phone before requesting a code.", "error");
+    return;
+  }
+
+  sendCodesBtn.disabled = true;
+  setFeedback("Sending confirmation code...", "");
+
+  try {
+    const result = await jsonpRequest("startVerification", {
+      businessName,
+      businessEmail: email,
+      businessPhone: phone,
+      website: String(onboardingForm.website.value || "").trim(),
+      ownerName: String(onboardingForm.ownerName.value || "").trim(),
+      ipAddress: state.telemetry.ipAddress,
+      userAgent: navigator.userAgent,
+      deviceInfo: getDeviceInfo(),
+      startedAt: onboardingForm.formStartedAt ? onboardingForm.formStartedAt.value : ""
+    });
+
+    if (!result.ok) {
+      throw new Error(result.message || "Could not send confirmation code.");
+    }
+
+    state.verificationSessionId = String(result.sessionId || "");
+    state.emailVerified = false;
+    state.phoneVerified = false;
+    state.phoneVerificationAvailable = !!result.phoneCodeSent;
+
+    setStatusPill(emailVerifyStatus, "Email code sent. Awaiting confirmation.", "warning");
+
+    if (phoneCodeInput && verifyPhoneBtn) {
+      phoneCodeInput.disabled = !state.phoneVerificationAvailable;
+      verifyPhoneBtn.disabled = !state.phoneVerificationAvailable;
+    }
+
+    if (state.phoneVerificationAvailable) {
+      setStatusPill(phoneVerifyStatus, "Phone code sent. Awaiting confirmation.", "warning");
+    } else {
+      setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
+    }
+
+    setFeedback(result.message || "Confirmation code sent.", "success");
+  } catch (error) {
+    setFeedback(error.message || "Unable to send confirmation code.", "error");
+  } finally {
+    sendCodesBtn.disabled = false;
+  }
+}
+
+async function verifyCode(channel) {
+  if (!state.verificationSessionId) {
+    setFeedback("Please send the confirmation code first.", "error");
+    return;
+  }
+
+  if (channel === "phone" && !state.phoneVerificationAvailable) {
+    setFeedback("Phone confirmation is not available yet. PERX may confirm this manually before approval.", "error");
+    return;
+  }
+
+  const input = channel === "email" ? emailCodeInput : phoneCodeInput;
+  const code = String(input && input.value || "").trim();
+
+  if (!/^\d{6}$/.test(code)) {
+    setFeedback("Please enter a valid 6-digit confirmation code.", "error");
+    input && input.focus();
+    return;
+  }
+
+  setFeedback(`Confirming ${channel} code...`, "");
+
+  try {
+    const result = await jsonpRequest("verifyCode", {
+      sessionId: state.verificationSessionId,
+      channel,
+      code,
+      ipAddress: state.telemetry.ipAddress
+    });
+
+    if (!result.ok) {
+      throw new Error(result.message || "Confirmation failed.");
+    }
+
+    if (channel === "email") {
+      state.emailVerified = true;
+      setStatusPill(emailVerifyStatus, "Business email confirmed", "success");
+    } else {
+      state.phoneVerified = true;
+      setStatusPill(phoneVerifyStatus, "Business phone confirmed", "success");
+    }
+
+    setFeedback(result.message || "Confirmation successful.", "success");
+  } catch (error) {
+    setFeedback(error.message || "Confirmation failed.", "error");
+    if (channel === "email") {
+      setStatusPill(emailVerifyStatus, "Email confirmation failed", "error");
+    } else {
+      setStatusPill(phoneVerifyStatus, "Phone confirmation failed", "error");
+    }
+  }
+}
+
+function updateDomainStatus() {
+  if (!onboardingForm) {
+    return;
+  }
+
+  const email = String(onboardingForm.businessEmail.value || "").trim().toLowerCase();
+  const website = String(onboardingForm.website.value || "").trim();
+
+  if (!isValidEmail(email)) {
+    setStatusPill(domainCheckStatus, "Enter a valid business email first", "neutral");
+    return;
+  }
+
+  const emailDomain = getEmailDomain(email);
+  const websiteDomain = getWebsiteDomain(website);
+
+  if (FREE_EMAIL_DOMAINS.has(emailDomain)) {
+    setStatusPill(domainCheckStatus, "Public email domain. PERX may ask for extra confirmation.", "warning");
+    return;
+  }
+
+  if (!websiteDomain) {
+    setStatusPill(domainCheckStatus, "No website provided. PERX may confirm ownership manually.", "warning");
+    return;
+  }
+
+  if (emailDomain === websiteDomain || emailDomain.endsWith(`.${websiteDomain}`)) {
+    setStatusPill(domainCheckStatus, "Business email domain matched", "success");
+    return;
+  }
+
+  setStatusPill(domainCheckStatus, "Email and website domains differ. Extra confirmation may be needed.", "warning");
+}
+
+function resetVerificationState() {
+  state.verificationSessionId = "";
+  state.emailVerified = false;
+  state.phoneVerified = false;
+  state.phoneVerificationAvailable = false;
+
+  if (emailCodeInput) {
+    emailCodeInput.value = "";
+  }
+  if (phoneCodeInput) {
+    phoneCodeInput.value = "";
+    phoneCodeInput.disabled = true;
+  }
+  if (verifyPhoneBtn) {
+    verifyPhoneBtn.disabled = true;
+  }
+
+  setStatusPill(emailVerifyStatus, "Not confirmed", "neutral");
+  setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
+}
+
 async function submitAgreement(event) {
   event.preventDefault();
 
   if (!validateCurrentStep()) {
+    return;
+  }
+
+  if (!state.emailVerified) {
+    setFeedback("Business email confirmation must be completed before submission.", "error");
+    return;
+  }
+
+  if (state.phoneVerificationAvailable && !state.phoneVerified) {
+    setFeedback("Business phone confirmation must be completed before submission.", "error");
     return;
   }
 
@@ -320,7 +581,7 @@ function buildSubmissionPayload() {
   const website = String(onboardingForm.website.value || "").trim();
 
   return {
-    sessionId: "",
+    sessionId: state.verificationSessionId,
     agreementVersion: AGREEMENT_VERSION,
     businessName: String(onboardingForm.businessName.value || "").trim(),
     businessAddress: String(onboardingForm.businessAddress.value || "").trim(),
@@ -333,8 +594,11 @@ function buildSubmissionPayload() {
     businessCategory: String(onboardingForm.businessCategory.value || "").trim(),
     ownerName: String(onboardingForm.ownerName.value || "").trim(),
     jobTitle: String(onboardingForm.jobTitle.value || "").trim(),
+    signerRole: String(onboardingForm.signerRole.value || "").trim(),
+    authorityBasis: String(onboardingForm.authorityBasis.value || "").trim(),
     notes: String(onboardingForm.notes.value || "").trim(),
     offerDetails: String(onboardingForm.offerDetails.value || "").trim(),
+    offerRestrictions: String(onboardingForm.offerRestrictions.value || "").trim(),
     signatureName: String(onboardingForm.signatureName.value || "").trim(),
     signatureDate: String(onboardingForm.signatureDate.value || "").trim(),
     drawnSignature: serializeSignatureData(),
@@ -344,6 +608,7 @@ function buildSubmissionPayload() {
     consentLegalBinding: onboardingForm.legalBinding.checked,
     consentESign: onboardingForm.eSignConsent.checked,
     consentPerjury: onboardingForm.penaltyPerjury.checked,
+    consentCountersignature: onboardingForm.countersignatureConsent.checked,
     formStartedAt: String(onboardingForm.formStartedAt ? onboardingForm.formStartedAt.value : ""),
     submittedAt: new Date().toISOString(),
     ipAddress: state.telemetry.ipAddress,
@@ -352,8 +617,8 @@ function buildSubmissionPayload() {
     operatingSystem: getOperatingSystem(),
     deviceInfo: getDeviceInfo(),
     approxLocation: buildApproxLocation(),
-    emailVerificationStatus: false,
-    phoneVerificationStatus: false,
+    emailVerificationStatus: state.emailVerified,
+    phoneVerificationStatus: state.phoneVerified,
     emailDomainStatus: getDomainStatusCode(email, website)
   };
 }
@@ -391,8 +656,25 @@ function resetFormFlow() {
 
   state.step = 1;
   state.agreementReachedBottom = false;
+  state.verificationSessionId = "";
+  state.emailVerified = false;
+  state.phoneVerified = false;
+  state.phoneVerificationAvailable = false;
 
   clearSignature();
+  if (emailCodeInput) {
+    emailCodeInput.value = "";
+  }
+  if (phoneCodeInput) {
+    phoneCodeInput.value = "";
+    phoneCodeInput.disabled = true;
+  }
+  if (verifyPhoneBtn) {
+    verifyPhoneBtn.disabled = true;
+  }
+  setStatusPill(domainCheckStatus, "Awaiting business email", "neutral");
+  setStatusPill(emailVerifyStatus, "Not confirmed", "neutral");
+  setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
   setStatusPill(agreementScrollStatus, "Scroll to the bottom to continue", "warning");
 
   renderStep();
