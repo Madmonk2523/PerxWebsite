@@ -1,5 +1,5 @@
 const BACKEND_ENDPOINT = "https://script.google.com/macros/s/AKfycbwzakRd5psqLOgZPdgu9HoZj79bM6WbS5KQy1DY6UbYjj367KlvcDJehqSU9GOsK2IH/exec";
-const AGREEMENT_VERSION = "2026.06.26-r2";
+const AGREEMENT_VERSION = "2026.06.26-r3";
 
 const state = {
   step: 1,
@@ -381,7 +381,7 @@ async function validateCurrentStep() {
       "legalBinding",
       "eSignConsent",
       "penaltyPerjury",
-      "countersignatureConsent"
+      "signatureEffectConsent"
     ];
 
     for (const name of checkboxNames) {
@@ -590,7 +590,8 @@ function buildSubmissionPayload() {
     consentLegalBinding: onboardingForm.legalBinding.checked,
     consentESign: onboardingForm.eSignConsent.checked,
     consentPerjury: onboardingForm.penaltyPerjury.checked,
-    consentCountersignature: onboardingForm.countersignatureConsent.checked,
+    consentSignatureEffect: onboardingForm.signatureEffectConsent.checked,
+    consentCountersignature: onboardingForm.signatureEffectConsent.checked,
     formStartedAt: String(onboardingForm.formStartedAt ? onboardingForm.formStartedAt.value : ""),
     submittedAt: new Date().toISOString(),
     ipAddress: state.telemetry.ipAddress,

@@ -7,10 +7,6 @@ const SETTINGS_SHEET_NAME = 'PERX Settings';
 const ADMIN_EMAIL = 'chasemallor@gmail.com';
 const SUPPORT_EMAIL = 'support@joinperx.com';
 const EMAIL_FROM_NAME = 'PERX';
-const PERX_REPRESENTATIVE_NAME = 'Beth Mallor';
-const PERX_REPRESENTATIVE_TITLE = 'Authorized Representative';
-const PERX_REPRESENTATIVE_PHONE = '646-989-0274';
-const PERX_REPRESENTATIVE_EMAIL = 'ChaseMallor@gmail.com';
 
 const AGREEMENT_PREFIX = 'PERX-';
 const AGREEMENT_START_SEQUENCE = 241;
@@ -371,7 +367,6 @@ function adminDecision_(payload, status) {
 
   if (status === 'Approved') {
     sheet.getRange(row, 39).setValue('Approved by PERX admin');
-    sheet.getRange(row, 50).setValue(formatIso_(new Date()));
   }
 
   const businessEmail = normalizeEmail_(values[9]);
@@ -401,7 +396,7 @@ function normalizeSubmissionPayload_(payload) {
 
   return {
     sessionId: cleanText_(payload.sessionId),
-    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.26-r2',
+    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.26-r3',
     businessName: cleanText_(payload.businessName),
     businessAddress: cleanText_(payload.businessAddress),
     city: cleanText_(payload.city),
@@ -428,7 +423,7 @@ function normalizeSubmissionPayload_(payload) {
     consentLegalBinding: cleanText_(payload.consentLegalBinding) === 'true',
     consentESign: cleanText_(payload.consentESign) === 'true',
     consentPerjury: cleanText_(payload.consentPerjury) === 'true',
-    consentCountersignature: cleanText_(payload.consentCountersignature) === 'true',
+    consentSignatureEffect: cleanText_(payload.consentSignatureEffect || payload.consentCountersignature) === 'true',
     formStartedAt: cleanText_(payload.formStartedAt),
     submittedAt: cleanText_(payload.submittedAt),
     ipAddress: cleanText_(payload.ipAddress),
@@ -479,7 +474,7 @@ function validateSubmission_(submission) {
     return 'Enter a valid New York ZIP code.';
   }
 
-  if (!submission.consentAuthority || !submission.consentAgreement || !submission.consentLegalBinding || !submission.consentESign || !submission.consentPerjury || !submission.consentCountersignature) {
+  if (!submission.consentAuthority || !submission.consentAgreement || !submission.consentLegalBinding || !submission.consentESign || !submission.consentPerjury || !submission.consentSignatureEffect) {
     return 'All required agreement confirmations must be accepted.';
   }
 
@@ -693,11 +688,11 @@ function buildSubmissionRow_(submission, session, context) {
     submission.signerRole,
     submission.authorityBasis,
     submission.offerRestrictions,
-    submission.consentCountersignature ? 'Yes' : 'No',
-    PERX_REPRESENTATIVE_NAME,
-    PERX_REPRESENTATIVE_TITLE,
-    PERX_REPRESENTATIVE_PHONE,
-    PERX_REPRESENTATIVE_EMAIL,
+    submission.consentSignatureEffect ? 'Yes' : 'No',
+    '',
+    '',
+    '',
+    '',
     '',
     submission.maxDiscount
   ];
@@ -712,7 +707,7 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   body.appendParagraph('Agreement ID: ' + agreementId);
   body.appendParagraph('Agreement Version: ' + submission.agreementVersion);
   body.appendParagraph('Submission Timestamp: ' + formatIso_(submittedAt));
-  body.appendParagraph('Effective Date: This Agreement becomes effective when signed by the Business and approved/countersigned by PERX Rewards.');
+  body.appendParagraph('Effective Date: This Agreement becomes effective when the Business\'s authorized representative electronically signs and submits it to PERX. PERX\'s receipt of the signed submission constitutes acceptance, and no separate PERX signature is required.');
   body.appendParagraph('Launch Date: The date PERX Rewards is first made publicly available for download and use by the general public.');
 
   body.appendParagraph('');
@@ -750,7 +745,7 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
 
   body.appendParagraph('');
   body.appendParagraph('3. Participation Term').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('This Agreement becomes effective when signed by both parties. The Business participation begins on the Launch Date. The Business agrees to remain an active participant on PERX and honor the agreed offer for twelve (12) months beginning on the Launch Date. After the initial 12-month period, this Agreement automatically renews month-to-month unless either party provides at least 30 days written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date.');
+  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. The Business\'s participation begins on the Launch Date. The Business agrees to remain an active participant on PERX and honor the agreed offer for twelve (12) months beginning on the Launch Date. After the initial 12-month period, this Agreement automatically renews month-to-month unless either party provides at least 30 days written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date.');
 
   body.appendParagraph('');
   body.appendParagraph('4. Business Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -770,7 +765,7 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
 
   body.appendParagraph('');
   body.appendParagraph('8. General Terms').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('This Agreement is governed by the laws of the State of New York. This Agreement contains the complete agreement between PERX and the Business regarding participation in PERX Rewards. Any changes to this Agreement must be in writing and signed by both parties. If any part of this Agreement is found to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.');
+  body.appendParagraph('This Agreement is governed by the laws of the State of New York. This Agreement contains the complete agreement between PERX and the Business regarding participation in PERX Rewards. Any changes to this Agreement must be agreed to in writing by both parties. If any part of this Agreement is found to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.');
 
   body.appendParagraph('');
   body.appendParagraph('Agreement Confirmations').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -779,18 +774,11 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   body.appendParagraph('Legally binding acknowledgment: ' + yesNo_(submission.consentLegalBinding));
   body.appendParagraph('Electronic signature consent: ' + yesNo_(submission.consentESign));
   body.appendParagraph('Perjury declaration accepted: ' + yesNo_(submission.consentPerjury));
-  body.appendParagraph('PERX countersignature acknowledgment: ' + yesNo_(submission.consentCountersignature));
+  body.appendParagraph('Signature effectiveness acknowledgment: ' + yesNo_(submission.consentSignatureEffect));
 
   body.appendParagraph('');
-  body.appendParagraph('Signatures').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('PERX Rewards');
-  body.appendParagraph('Representative: ' + PERX_REPRESENTATIVE_NAME);
-  body.appendParagraph('Title: ' + PERX_REPRESENTATIVE_TITLE);
-  body.appendParagraph('Phone: ' + PERX_REPRESENTATIVE_PHONE);
-  body.appendParagraph('Email: ' + PERX_REPRESENTATIVE_EMAIL);
-  body.appendParagraph('PERX Signature: Pending PERX approval/countersignature in the admin approval workflow.');
-  body.appendParagraph('');
-  body.appendParagraph('Business');
+  body.appendParagraph('Business Electronic Signature Record').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('This Agreement is fully executed upon the Business\'s electronic signature and submission. No separate PERX signature is required.');
   body.appendParagraph('Business Name: ' + submission.businessName);
   body.appendParagraph('Authorized Representative: ' + submission.ownerName);
   body.appendParagraph('Title: ' + submission.jobTitle);
@@ -841,7 +829,7 @@ function sendBusinessConfirmation_(submission, agreementId, pdfFile) {
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
     '<h2 style="margin:0 0 12px;">PERX agreement received</h2>' +
     '<p>Thank you for applying to join PERX Rewards.</p>' +
-    '<p>Your signed Business Participation Agreement has been received. It becomes effective only after PERX approves and countersigns it.</p>' +
+    '<p>Your signed Business Participation Agreement has been received and is effective as of your electronic submission. Business activation remains subject to PERX approval.</p>' +
     '<p><strong>Agreement Number:</strong> ' + escapeHtml_(agreementId) + '</p>' +
     '<p><strong>Your Offer:</strong> ' + escapeHtml_(submission.offerDetails) + '</p>' +
     '<p><strong>Restrictions:</strong> ' + escapeHtml_(submission.offerRestrictions) + '</p>' +
@@ -855,7 +843,7 @@ function sendBusinessConfirmation_(submission, agreementId, pdfFile) {
     body:
       'PERX agreement received\n\n' +
       'Thank you for applying to join PERX Rewards.\n' +
-      'Your signed Business Participation Agreement has been received. It becomes effective only after PERX approves and countersigns it.\n\n' +
+      'Your signed Business Participation Agreement has been received and is effective as of your electronic submission. Business activation remains subject to PERX approval.\n\n' +
       'Agreement Number: ' + agreementId + '\n' +
       'Offer: ' + submission.offerDetails + '\n' +
       'Restrictions: ' + submission.offerRestrictions + '\n' +
@@ -939,7 +927,7 @@ function sendAdminDecisionEmail_(toEmail, businessName, agreementId, status, off
 
   const subject = 'PERX Application Update: ' + status;
   const approvalNote = status === 'Approved'
-    ? '<p>PERX approval/countersignature has been recorded for this agreement.</p>'
+    ? '<p>PERX has approved the Business for activation.</p>'
     : '';
   const htmlBody =
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
@@ -962,7 +950,7 @@ function sendAdminDecisionEmail_(toEmail, businessName, agreementId, status, off
       'Business: ' + businessName + '\n' +
       'Agreement ID: ' + agreementId + '\n' +
       'Status: ' + status + '\n' +
-      (status === 'Approved' ? 'PERX approval/countersignature has been recorded for this agreement.\n' : '') +
+      (status === 'Approved' ? 'PERX has approved the Business for activation.\n' : '') +
       'Offer: ' + offer + '\n' +
       'Notes: ' + (notes || 'N/A') + '\n\n' +
       'Support: ' + SUPPORT_EMAIL,
@@ -1042,12 +1030,12 @@ function getOrCreateSubmissionSheet_() {
     'signerRole',
     'authorityBasis',
     'offerRestrictions',
-    'countersignatureAcknowledged',
+    'signatureEffectAcknowledged',
     'perxRepresentativeName',
     'perxRepresentativeTitle',
     'perxRepresentativePhone',
     'perxRepresentativeEmail',
-    'perxCountersignedAt',
+    'legacyPerxActionAt',
     'maxDiscount'
   ]];
 
