@@ -36,7 +36,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260626-2" />
   </head>
   <body>
     <div class="bg-grid" aria-hidden="true"></div>
@@ -91,19 +91,26 @@
                 <input type="text" name="businessAddress" required autocomplete="street-address" />
               </label>
             </div>
-            <div class="field-grid three-col">
-              <label>
-                City
-                <input type="text" name="city" required autocomplete="address-level2" />
+            <input type="hidden" name="city" value="" />
+            <input type="hidden" name="state" value="NY" />
+            <div class="zip-field-row">
+              <label class="zip-input-label">
+                New York ZIP Code
+                <input
+                  type="text"
+                  name="zipCode"
+                  required
+                  inputmode="numeric"
+                  pattern="[0-9]{5}"
+                  maxlength="5"
+                  autocomplete="postal-code"
+                  placeholder="10001"
+                />
               </label>
-              <label>
-                State
-                <input type="text" name="state" required maxlength="2" autocomplete="address-level1" />
-              </label>
-              <label>
-                ZIP Code
-                <input type="text" name="zipCode" required inputmode="numeric" maxlength="10" autocomplete="postal-code" />
-              </label>
+              <div class="zip-location" id="zipLocationStatus" role="status" aria-live="polite">
+                <span class="zip-location-label">City and state</span>
+                <strong>Enter a 5-digit New York ZIP code</strong>
+              </div>
             </div>
             <div class="field-grid two-col">
               <label>
@@ -118,21 +125,83 @@
             <div class="field-grid two-col">
               <label>
                 Business Category
-                <input type="text" name="businessCategory" required placeholder="Restaurant, Retail, Services" />
+                <select name="businessCategory" required>
+                  <option value="">Select a category</option>
+                  <optgroup label="Food &amp; Drink">
+                    <option>Bakery</option>
+                    <option>Bar or Pub</option>
+                    <option>Cafe or Coffee Shop</option>
+                    <option>Catering</option>
+                    <option>Deli or Sandwich Shop</option>
+                    <option>Dessert or Ice Cream Shop</option>
+                    <option>Fast Casual Restaurant</option>
+                    <option>Food Truck</option>
+                    <option>Grocery or Specialty Food</option>
+                    <option>Restaurant</option>
+                  </optgroup>
+                  <optgroup label="Retail">
+                    <option>Apparel and Accessories</option>
+                    <option>Automotive Retail</option>
+                    <option>Books, Music, and Gifts</option>
+                    <option>Convenience Store</option>
+                    <option>Electronics</option>
+                    <option>Florist</option>
+                    <option>Furniture and Home Goods</option>
+                    <option>Health and Beauty Retail</option>
+                    <option>Jewelry</option>
+                    <option>Pet Store</option>
+                    <option>Sporting Goods</option>
+                    <option>Specialty Retail</option>
+                  </optgroup>
+                  <optgroup label="Health, Beauty &amp; Fitness">
+                    <option>Barber Shop</option>
+                    <option>Beauty Salon</option>
+                    <option>Dental Practice</option>
+                    <option>Fitness Studio</option>
+                    <option>Gym</option>
+                    <option>Health or Wellness Practice</option>
+                    <option>Massage or Spa</option>
+                    <option>Nail Salon</option>
+                    <option>Optical or Eye Care</option>
+                    <option>Physical Therapy</option>
+                    <option>Yoga or Pilates Studio</option>
+                  </optgroup>
+                  <optgroup label="Services">
+                    <option>Auto Repair or Service</option>
+                    <option>Child Care</option>
+                    <option>Cleaning Service</option>
+                    <option>Education or Tutoring</option>
+                    <option>Financial Services</option>
+                    <option>Home Services</option>
+                    <option>Laundry or Dry Cleaning</option>
+                    <option>Legal Services</option>
+                    <option>Pet Care or Grooming</option>
+                    <option>Photography</option>
+                    <option>Professional Services</option>
+                    <option>Real Estate</option>
+                    <option>Technology Services</option>
+                  </optgroup>
+                  <optgroup label="Entertainment &amp; Hospitality">
+                    <option>Arts or Entertainment</option>
+                    <option>Event Venue</option>
+                    <option>Hotel or Lodging</option>
+                    <option>Museum or Attraction</option>
+                    <option>Recreation</option>
+                    <option>Sports Venue</option>
+                    <option>Travel or Tourism</option>
+                  </optgroup>
+                  <option>Other</option>
+                </select>
               </label>
               <label>
                 Owner / Authorized Representative Full Name
                 <input type="text" name="ownerName" required autocomplete="name" />
               </label>
             </div>
-            <div class="field-grid two-col">
+            <div class="field-grid one-col">
               <label>
                 Job Title
                 <input type="text" name="jobTitle" required autocomplete="organization-title" />
-              </label>
-              <label>
-                Optional Notes
-                <input type="text" name="notes" />
               </label>
             </div>
           </section>
@@ -140,24 +209,70 @@
           <section class="step is-hidden" data-step="2" aria-hidden="true">
             <h3>Your PERX Offer</h3>
             <p class="step-intro">
-              Enter the maximum discount a PERX user can claim each time they qualify.
+              Set the most your business is comfortable offering. The PERX Rewards Team will
+              choose the final discount and minimum purchase for each pass.
             </p>
-            <label>
-              Maximum Discount Amount
-              <input
-                type="number"
-                name="maxDiscount"
-                required
-                min="0.01"
-                step="0.01"
-                inputmode="decimal"
-                placeholder="5.00"
-              />
+
+            <div class="offer-process" aria-label="How a PERX offer works">
+              <div class="offer-process-step">
+                <span>1</span>
+                <strong>Customer enters your proximity circle</strong>
+              </div>
+              <div class="offer-process-step">
+                <span>2</span>
+                <strong>A PERX discount pass becomes available</strong>
+              </div>
+              <div class="offer-process-step">
+                <span>3</span>
+                <strong>Customer claims and uses the discount</strong>
+              </div>
+              <div class="offer-process-step">
+                <span>4</span>
+                <strong>Claim eligibility resets after 24 hours</strong>
+              </div>
+            </div>
+
+            <div class="offer-controls">
+              <label>
+                Maximum Amount Off
+                <span class="field-help">
+                  What is the most one customer may receive off a qualifying purchase?
+                </span>
+                <span class="money-input">
+                  <span aria-hidden="true">$</span>
+                  <input
+                    type="number"
+                    name="maxDiscount"
+                    required
+                    min="0.01"
+                    step="0.01"
+                    inputmode="decimal"
+                    placeholder="5.00"
+                  />
+                </span>
+              </label>
+
+              <div class="perx-decision-note">
+                <strong>PERX sets the final offer</strong>
+                <p>
+                  We will choose an appropriate discount per proximity pass and the minimum
+                  purchase required to use it. The discount will never exceed your maximum above.
+                </p>
+              </div>
+            </div>
+
+            <label class="offer-notes-label">
+              Notes or Requests for the PERX Team (Optional)
+              <span class="field-help">
+                Share margins, exclusions, preferred minimum spend, or anything else we should
+                consider when setting your offer.
+              </span>
+              <textarea
+                name="notes"
+                rows="4"
+                placeholder="Example: Please exclude catering orders and gift cards."
+              ></textarea>
             </label>
-            <p class="meta-note">
-              PERX will list this as a maximum discount per eligible proximity pass. Each claimed
-              discount starts a 24-hour cooldown for that customer.
-            </p>
           </section>
 
           <section class="step is-hidden" data-step="3" aria-hidden="true">
@@ -239,11 +354,12 @@
                   channels.
                 </p>
                 <p>
-                  2. Agreed Offer: The Business agrees to provide the offer and restrictions
-                  submitted in this form to verified PERX users beginning on the Launch Date. The
-                  Business agrees to honor this offer whenever a customer properly verifies
-                  eligibility through PERX. Any change to the offer must be approved by PERX in
-                  writing before taking effect.
+                  2. Agreed Offer: The Business authorizes PERX to select a discount amount up to
+                  the maximum submitted by the Business and to set an appropriate minimum purchase
+                  requirement. A discount pass becomes available when an eligible customer enters
+                  and passes through the Business's PERX proximity circle. After a customer claims
+                  a discount, that customer's eligibility resets after 24 hours. The Business
+                  agrees to honor the final offer published by PERX beginning on the Launch Date.
                 </p>
                 <p>
                   3. Participation Term: This Agreement becomes effective when signed by both
@@ -332,11 +448,11 @@
 
           <section class="step is-hidden" data-step="5" aria-hidden="true">
             <h3>Electronic Signature</h3>
-            <div class="field-grid two-col">
-              <label>
-                Typed Full Legal Name
-                <input type="text" name="signatureName" required />
-              </label>
+            <div class="signature-summary">
+              <span>Signing as</span>
+              <strong id="signatureNamePreview">Authorized representative</strong>
+            </div>
+            <div class="field-grid one-col signature-date-field">
               <label>
                 Current Date
                 <input type="date" name="signatureDate" required />
@@ -383,6 +499,6 @@
       </section>
     </main>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=20260626-2"></script>
   </body>
 </html>

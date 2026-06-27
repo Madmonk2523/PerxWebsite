@@ -231,6 +231,174 @@ select:focus {
   line-height: 1.5;
 }
 
+.zip-field-row {
+  display: grid;
+  grid-template-columns: minmax(11rem, 0.7fr) minmax(0, 1.3fr);
+  gap: 0.82rem;
+  align-items: end;
+}
+
+.zip-location {
+  min-height: 3.05rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.18rem;
+  padding: 0.44rem 0 0.44rem 0.82rem;
+  border-left: 3px solid #c8d5e8;
+  color: #435b7d;
+}
+
+.zip-location-label {
+  font-size: 0.73rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #687d99;
+}
+
+.zip-location strong {
+  font-size: 0.92rem;
+  color: #273f62;
+}
+
+.zip-location.is-loading {
+  border-left-color: #d69a2d;
+}
+
+.zip-location.is-valid {
+  border-left-color: var(--success);
+}
+
+.zip-location.is-error {
+  border-left-color: var(--danger);
+}
+
+.zip-location.is-error strong {
+  color: var(--danger);
+}
+
+.offer-process {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 1.05rem 0 1.25rem;
+  border-top: 1px solid var(--stroke);
+  border-bottom: 1px solid var(--stroke);
+}
+
+.offer-process-step {
+  min-width: 0;
+  padding: 0.95rem 0.78rem;
+  display: grid;
+  grid-template-columns: 1.65rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.offer-process-step + .offer-process-step {
+  border-left: 1px solid var(--stroke);
+}
+
+.offer-process-step > span {
+  width: 1.65rem;
+  height: 1.65rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #0f6fff;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.offer-process-step strong {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #243d61;
+}
+
+.offer-controls {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.8fr) minmax(0, 1.2fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.field-help {
+  display: block;
+  font-size: 0.77rem;
+  line-height: 1.42;
+  font-weight: 400;
+  color: #687d99;
+}
+
+.money-input {
+  position: relative;
+  display: block;
+}
+
+.money-input > span {
+  position: absolute;
+  z-index: 1;
+  left: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #536b8b;
+  font-weight: 800;
+}
+
+.money-input input {
+  padding-left: 1.75rem;
+  font-size: 1.03rem;
+  font-weight: 700;
+}
+
+.perx-decision-note {
+  padding: 0.35rem 0 0.35rem 1rem;
+  border-left: 3px solid #0f6fff;
+}
+
+.perx-decision-note strong {
+  color: #1d3b65;
+}
+
+.perx-decision-note p {
+  margin: 0.4rem 0 0;
+  color: #526986;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.offer-notes-label {
+  margin-top: 1.15rem;
+}
+
+.signature-summary {
+  margin: 0.4rem 0 0.9rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--stroke);
+  border-bottom: 1px solid var(--stroke);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.signature-summary span {
+  color: #687d99;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.signature-summary strong {
+  color: #203b63;
+  text-align: right;
+}
+
+.signature-date-field {
+  max-width: 21rem;
+}
+
 .verification-card {
   border: 1px solid var(--stroke);
   border-radius: 1rem;
@@ -446,6 +614,19 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .offer-process {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .offer-process-step:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid var(--stroke);
+  }
+
+  .offer-process-step:nth-child(4) {
+    border-top: 1px solid var(--stroke);
+  }
+
   .wizard-actions {
     justify-content: stretch;
     flex-wrap: wrap;
@@ -469,5 +650,32 @@ button:disabled {
 
   .lead {
     font-size: 0.95rem;
+  }
+
+  .zip-field-row,
+  .offer-controls,
+  .offer-process {
+    grid-template-columns: 1fr;
+  }
+
+  .zip-location {
+    min-height: auto;
+    padding: 0.2rem 0 0.2rem 0.72rem;
+  }
+
+  .offer-process-step + .offer-process-step,
+  .offer-process-step:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid var(--stroke);
+  }
+
+  .signature-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .signature-summary strong {
+    text-align: left;
   }
 }

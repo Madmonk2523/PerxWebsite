@@ -401,7 +401,7 @@ function normalizeSubmissionPayload_(payload) {
 
   return {
     sessionId: cleanText_(payload.sessionId),
-    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.26',
+    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.26-r2',
     businessName: cleanText_(payload.businessName),
     businessAddress: cleanText_(payload.businessAddress),
     city: cleanText_(payload.city),
@@ -419,7 +419,7 @@ function normalizeSubmissionPayload_(payload) {
     maxDiscount,
     offerDetails,
     offerRestrictions,
-    signatureName: cleanText_(payload.signatureName),
+    signatureName: cleanText_(payload.signatureName) || cleanText_(payload.ownerName),
     signatureDate: cleanText_(payload.signatureDate),
     drawnSignature: cleanText_(payload.drawnSignature),
     drawnSignaturePresent: cleanText_(payload.drawnSignaturePresent) === 'true',
@@ -473,6 +473,10 @@ function validateSubmission_(submission) {
 
   if (!isValidEmail_(submission.businessEmail)) {
     return 'Enter a valid business email address.';
+  }
+
+  if (!/^[0-9]{5}$/.test(submission.zipCode) || submission.state !== 'NY') {
+    return 'Enter a valid New York ZIP code.';
   }
 
   if (!submission.consentAuthority || !submission.consentAgreement || !submission.consentLegalBinding || !submission.consentESign || !submission.consentPerjury || !submission.consentCountersignature) {
@@ -734,6 +738,7 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   body.appendParagraph('Agreed Offer').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph('Offer: ' + submission.offerDetails);
   body.appendParagraph('Restrictions: ' + submission.offerRestrictions);
+  body.appendParagraph('Business Notes/Requests for PERX Review: ' + (submission.notes || 'None provided'));
 
   body.appendParagraph('');
   body.appendParagraph('1. Participation').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -741,7 +746,7 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
 
   body.appendParagraph('');
   body.appendParagraph('2. Agreed Offer').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business agrees to provide the offer listed above to verified PERX users beginning on the Launch Date. The Business agrees to honor this offer whenever a customer properly verifies eligibility through PERX. Any change to the offer must be approved by PERX in writing before taking effect.');
+  body.appendParagraph('The Business authorizes PERX to select a discount amount up to the maximum submitted by the Business and to set an appropriate minimum purchase requirement. A discount pass becomes available when an eligible customer enters and passes through the Business\'s PERX proximity circle. After a customer claims a discount, that customer\'s eligibility resets after 24 hours. The Business agrees to honor the final offer published by PERX beginning on the Launch Date.');
 
   body.appendParagraph('');
   body.appendParagraph('3. Participation Term').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -884,6 +889,7 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
     '<p><strong>Phone:</strong> ' + escapeHtml_(submission.businessPhone) + '</p>' +
     '<p><strong>Offer:</strong> ' + escapeHtml_(submission.offerDetails) + '</p>' +
     '<p><strong>Restrictions:</strong> ' + escapeHtml_(submission.offerRestrictions) + '</p>' +
+    '<p><strong>Offer Notes/Requests:</strong> ' + escapeHtml_(submission.notes || 'None provided') + '</p>' +
     '<p><strong>Agreement ID:</strong> ' + escapeHtml_(agreementId) + '</p>' +
     '<p><strong>Status:</strong> ' + escapeHtml_(status) + '</p>' +
     '<p><strong>Verification:</strong> Email ' +
@@ -912,6 +918,7 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
       'Phone: ' + submission.businessPhone + '\n' +
       'Offer: ' + submission.offerDetails + '\n' +
       'Restrictions: ' + submission.offerRestrictions + '\n' +
+      'Offer Notes/Requests: ' + (submission.notes || 'None provided') + '\n' +
       'Agreement ID: ' + agreementId + '\n' +
       'Status: ' + status + '\n' +
       'Verification: Email ' + verificationStatusLabel_(submission.emailVerificationStatus) +
@@ -1418,11 +1425,11 @@ function formatCurrency_(amount) {
 }
 
 function buildOfferDetails_(maxDiscount) {
-  return 'Up to ' + formatCurrency_(maxDiscount) + ' off each eligible PERX proximity pass.';
+  return 'PERX may set discounts up to ' + formatCurrency_(maxDiscount) + ' for an eligible proximity-circle pass.';
 }
 
 function buildOfferRestrictions_(maxDiscount) {
-  return 'Maximum discount is ' + formatCurrency_(maxDiscount) + ' per eligible claim. Each claimed discount starts a 24-hour cooldown before that customer can claim again.';
+  return 'PERX determines the discount amount and required minimum purchase, subject to the business maximum of ' + formatCurrency_(maxDiscount) + '. Customer claim eligibility resets 24 hours after each claim.';
 }
 
 function normalizeEmail_(email) {

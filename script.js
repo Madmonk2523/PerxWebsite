@@ -1,5 +1,5 @@
 const BACKEND_ENDPOINT = "https://script.google.com/macros/s/AKfycbwzakRd5psqLOgZPdgu9HoZj79bM6WbS5KQy1DY6UbYjj367KlvcDJehqSU9GOsK2IH/exec";
-const AGREEMENT_VERSION = "2026.06.26";
+const AGREEMENT_VERSION = "2026.06.26-r2";
 
 const state = {
   step: 1,
@@ -43,10 +43,13 @@ const phoneVerifyStatus = document.getElementById("phoneVerifyStatus");
 
 const agreementBox = document.getElementById("agreementBox");
 const agreementScrollStatus = document.getElementById("agreementScrollStatus");
+const zipLocationStatus = document.getElementById("zipLocationStatus");
 
 const signaturePad = document.getElementById("signaturePad");
 const clearSignatureBtn = document.getElementById("clearSignatureBtn");
+const signatureNamePreview = document.getElementById("signatureNamePreview");
 let resizeSignaturePad = () => {};
+let zipLookupToken = 0;
 
 const agreementNumberLabel = document.getElementById("agreementNumberLabel");
 const downloadPdfBtn = document.getElementById("downloadPdfBtn");
@@ -79,8 +82,8 @@ function setupEventListeners() {
   }
 
   if (nextBtn) {
-    nextBtn.addEventListener("click", () => {
-      if (!validateCurrentStep()) {
+    nextBtn.addEventListener("click", async () => {
+      if (!(await validateCurrentStep())) {
         return;
       }
       state.step = Math.min(state.step + 1, state.totalSteps);
@@ -146,6 +149,34 @@ function setupEventListeners() {
       }
       input.addEventListener("input", resetVerificationState);
     });
+
+    if (onboardingForm.zipCode) {
+      onboardingForm.zipCode.addEventListener("input", () => {
+        const zip = String(onboardingForm.zipCode.value || "").replace(/\D/g, "").slice(0, 5);
+        onboardingForm.zipCode.value = zip;
+        onboardingForm.city.value = "";
+        onboardingForm.state.value = "NY";
+        onboardingForm.zipCode.dataset.resolvedZip = "";
+        zipLookupToken += 1;
+
+        if (zip.length === 5) {
+          lookupNewYorkZip(zip);
+        } else {
+          setZipLocationStatus("Enter a 5-digit New York ZIP code", "neutral");
+        }
+      });
+
+      onboardingForm.zipCode.addEventListener("blur", () => {
+        const zip = String(onboardingForm.zipCode.value || "").trim();
+        if (/^\d{5}$/.test(zip) && !String(onboardingForm.city.value || "").trim()) {
+          lookupNewYorkZip(zip);
+        }
+      });
+    }
+
+    if (onboardingForm.ownerName) {
+      onboardingForm.ownerName.addEventListener("input", updateSignatureNamePreview);
+    }
   }
 }
 
@@ -199,11 +230,12 @@ function renderStep() {
   }
 
   if (state.step === state.totalSteps) {
+    updateSignatureNamePreview();
     scheduleSignaturePadResize();
   }
 }
 
-function validateCurrentStep() {
+async function validateCurrentStep() {
   if (!onboardingForm) {
     return false;
   }
@@ -212,8 +244,6 @@ function validateCurrentStep() {
     const required = [
       onboardingForm.businessName,
       onboardingForm.businessAddress,
-      onboardingForm.city,
-      onboardingForm.state,
       onboardingForm.zipCode,
       onboardingForm.businessPhone,
       onboardingForm.businessEmail,
@@ -226,6 +256,27 @@ function validateCurrentStep() {
       if (!field || !String(field.value || "").trim()) {
         setFeedback("Please complete all required business information fields.", "error");
         field && field.focus();
+        return false;
+      }
+    }
+
+    const zip = String(onboardingForm.zipCode.value || "").trim();
+    if (!/^\d{5}$/.test(zip)) {
+      setFeedback("Please enter a valid 5-digit New York ZIP code.", "error");
+      onboardingForm.zipCode.focus();
+      return false;
+    }
+
+    const resolvedZip = String(onboardingForm.zipCode.dataset.resolvedZip || "");
+    if (
+      resolvedZip !== zip ||
+      !String(onboardingForm.city.value || "").trim() ||
+      String(onboardingForm.state.value || "").toUpperCase() !== "NY"
+    ) {
+      const zipResolved = await lookupNewYorkZip(zip);
+      if (!zipResolved) {
+        setFeedback("Please enter a valid New York ZIP code.", "error");
+        onboardingForm.zipCode.focus();
         return false;
       }
     }
@@ -307,9 +358,8 @@ function validateCurrentStep() {
   }
 
   if (state.step === 5) {
-    if (!String(onboardingForm.signatureName.value || "").trim()) {
-      setFeedback("Please enter your full legal name for electronic signature.", "error");
-      onboardingForm.signatureName.focus();
+    if (!String(onboardingForm.ownerName.value || "").trim()) {
+      setFeedback("Please return to Business Information and enter the authorized representative's name.", "error");
       return false;
     }
 
@@ -430,7 +480,7 @@ function resetVerificationState() {
 async function submitAgreement(event) {
   event.preventDefault();
 
-  if (!validateCurrentStep()) {
+  if (!(await validateCurrentStep())) {
     return;
   }
 
@@ -491,7 +541,7 @@ function buildSubmissionPayload() {
     maxDiscount,
     offerDetails: buildOfferDetails(maxDiscount),
     offerRestrictions: buildOfferRestrictions(maxDiscount),
-    signatureName: String(onboardingForm.signatureName.value || "").trim(),
+    signatureName: String(onboardingForm.ownerName.value || "").trim(),
     signatureDate: String(onboardingForm.signatureDate.value || "").trim(),
     drawnSignature: serializeSignatureData(),
     drawnSignaturePresent: state.signatureStrokes.length > 0,
@@ -545,6 +595,8 @@ function resetFormFlow() {
   onboardingForm.reset();
   onboardingForm.formStartedAt.value = String(Date.now());
   onboardingForm.signatureDate.value = new Date().toISOString().slice(0, 10);
+  onboardingForm.state.value = "NY";
+  onboardingForm.zipCode.dataset.resolvedZip = "";
 
   state.step = 1;
   state.agreementReachedBottom = false;
@@ -559,6 +611,8 @@ function resetFormFlow() {
   setStatusPill(emailVerifyStatus, "Not confirmed", "neutral");
   setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
   setStatusPill(agreementScrollStatus, "Scroll to the bottom to continue", "warning");
+  setZipLocationStatus("Enter a 5-digit New York ZIP code", "neutral");
+  updateSignatureNamePreview();
 
   renderStep();
 }
@@ -581,11 +635,103 @@ function formatCurrency(amount) {
 }
 
 function buildOfferDetails(maxDiscount) {
-  return `Up to ${formatCurrency(maxDiscount)} off each eligible PERX proximity pass.`;
+  return `PERX may set discounts up to ${formatCurrency(maxDiscount)} for an eligible proximity-circle pass.`;
 }
 
 function buildOfferRestrictions(maxDiscount) {
-  return `Maximum discount is ${formatCurrency(maxDiscount)} per eligible claim. Each claimed discount starts a 24-hour cooldown before that customer can claim again.`;
+  return `PERX determines the discount amount and required minimum purchase, subject to the business's ${formatCurrency(maxDiscount)} maximum. Customer claim eligibility resets 24 hours after each claim.`;
+}
+
+function setZipLocationStatus(message, type) {
+  if (!zipLocationStatus) {
+    return;
+  }
+
+  const label = zipLocationStatus.querySelector(".zip-location-label");
+  const value = zipLocationStatus.querySelector("strong");
+  zipLocationStatus.classList.remove("is-loading", "is-valid", "is-error");
+
+  if (type === "loading") {
+    zipLocationStatus.classList.add("is-loading");
+  } else if (type === "valid") {
+    zipLocationStatus.classList.add("is-valid");
+  } else if (type === "error") {
+    zipLocationStatus.classList.add("is-error");
+  }
+
+  if (label) {
+    label.textContent = type === "valid" ? "Business location" : "City and state";
+  }
+  if (value) {
+    value.textContent = message;
+  }
+}
+
+async function lookupNewYorkZip(zipValue) {
+  const zip = String(zipValue || "").replace(/\D/g, "").slice(0, 5);
+  if (!/^\d{5}$/.test(zip)) {
+    setZipLocationStatus("Enter a 5-digit New York ZIP code", "error");
+    return false;
+  }
+
+  const token = ++zipLookupToken;
+  setZipLocationStatus("Finding city...", "loading");
+
+  try {
+    const response = await fetch(`https://api.zippopotam.us/us/${encodeURIComponent(zip)}`, {
+      cache: "no-store"
+    });
+    if (!response.ok) {
+      throw new Error("ZIP_NOT_FOUND");
+    }
+
+    const data = await response.json();
+    const places = Array.isArray(data.places) ? data.places : [];
+    const place = places.find(
+      (entry) => String(entry["state abbreviation"] || "").toUpperCase() === "NY"
+    );
+
+    if (!place) {
+      throw new Error("NOT_NEW_YORK");
+    }
+
+    if (token !== zipLookupToken || String(onboardingForm.zipCode.value || "") !== zip) {
+      return false;
+    }
+
+    const city = String(place["place name"] || "").trim();
+    if (!city) {
+      throw new Error("ZIP_NOT_FOUND");
+    }
+
+    onboardingForm.city.value = city;
+    onboardingForm.state.value = "NY";
+    onboardingForm.zipCode.dataset.resolvedZip = zip;
+    setZipLocationStatus(`${city}, New York`, "valid");
+    return true;
+  } catch (error) {
+    if (token !== zipLookupToken) {
+      return false;
+    }
+
+    onboardingForm.city.value = "";
+    onboardingForm.state.value = "NY";
+    onboardingForm.zipCode.dataset.resolvedZip = "";
+    const message = error && error.message === "NOT_NEW_YORK"
+      ? "That ZIP code is not in New York"
+      : "ZIP code not found. Check it and try again.";
+    setZipLocationStatus(message, "error");
+    return false;
+  }
+}
+
+function updateSignatureNamePreview() {
+  if (!signatureNamePreview || !onboardingForm || !onboardingForm.ownerName) {
+    return;
+  }
+
+  const name = String(onboardingForm.ownerName.value || "").trim();
+  signatureNamePreview.textContent = name || "Authorized representative";
 }
 
 function getBrowserName() {
