@@ -399,18 +399,95 @@ select:focus {
   max-width: 21rem;
 }
 
-.verification-card {
-  border: 1px solid var(--stroke);
-  border-radius: 1rem;
-  padding: 0.85rem;
-  background: rgba(255, 255, 255, 0.7);
-  margin: 0 0 0.72rem;
+.authority-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0.9rem 0 1rem;
+  border-top: 1px solid var(--stroke);
+  border-bottom: 1px solid var(--stroke);
 }
 
-.verification-title {
-  margin: 0 0 0.6rem;
-  color: #1f3d67;
+.authority-summary > div {
+  min-width: 0;
+  padding: 0.85rem 0.9rem;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.authority-summary > div + div {
+  border-left: 1px solid var(--stroke);
+}
+
+.authority-summary span,
+.verification-heading span {
+  color: #687d99;
+  font-size: 0.72rem;
   font-weight: 700;
+  text-transform: uppercase;
+}
+
+.authority-summary strong,
+.verification-heading strong {
+  color: #203b63;
+  overflow-wrap: anywhere;
+}
+
+.authority-summary small {
+  color: #5e7390;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.email-verification {
+  margin-top: 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--stroke);
+  border-bottom: 1px solid var(--stroke);
+}
+
+.verification-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.verification-heading > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.verification-heading .status-pill {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.verification-controls {
+  display: grid;
+  grid-template-columns: auto minmax(10rem, 1fr) auto;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.verification-code-field {
+  min-width: 0;
+}
+
+.authority-review-note {
+  margin-top: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #59708f;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.authority-review-note .status-pill {
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .status-pill {
@@ -677,5 +754,29 @@ button:disabled {
 
   .signature-summary strong {
     text-align: left;
+  }
+
+  .authority-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .authority-summary > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--stroke);
+  }
+
+  .verification-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .verification-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .authority-review-note {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

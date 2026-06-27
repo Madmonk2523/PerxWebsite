@@ -728,8 +728,8 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   body.appendParagraph('Authorized Representative').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph('Full Name: ' + submission.ownerName);
   body.appendParagraph('Job Title: ' + submission.jobTitle);
-  body.appendParagraph('Signer Relationship: ' + submission.signerRole);
-  body.appendParagraph('Authority Basis: ' + submission.authorityBasis);
+  body.appendParagraph('Role at the Business: ' + submission.signerRole);
+  body.appendParagraph('Authority to Sign: ' + submission.authorityBasis);
   body.appendParagraph('Typed Legal Signature Name: ' + submission.signatureName);
   body.appendParagraph('Signature Date: ' + submission.signatureDate);
   body.appendParagraph('Drawn Signature Included: ' + (submission.drawnSignaturePresent ? 'Yes' : 'No'));
@@ -882,9 +882,9 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
     '<h2 style="margin:0 0 12px;">New business submitted</h2>' +
     '<p><strong>Business Name:</strong> ' + escapeHtml_(submission.businessName) + '</p>' +
-    '<p><strong>Owner:</strong> ' + escapeHtml_(submission.ownerName) + '</p>' +
-    '<p><strong>Signer Role:</strong> ' + escapeHtml_(submission.signerRole) + '</p>' +
-    '<p><strong>Authority Basis:</strong> ' + escapeHtml_(submission.authorityBasis) + '</p>' +
+    '<p><strong>Signer:</strong> ' + escapeHtml_(submission.ownerName) + '</p>' +
+    '<p><strong>Role at the Business:</strong> ' + escapeHtml_(submission.signerRole) + '</p>' +
+    '<p><strong>Authority to Sign:</strong> ' + escapeHtml_(submission.authorityBasis) + '</p>' +
     '<p><strong>Email:</strong> ' + escapeHtml_(submission.businessEmail) + '</p>' +
     '<p><strong>Phone:</strong> ' + escapeHtml_(submission.businessPhone) + '</p>' +
     '<p><strong>Offer:</strong> ' + escapeHtml_(submission.offerDetails) + '</p>' +
@@ -911,9 +911,9 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
     body:
       'New business submitted\n\n' +
       'Business: ' + submission.businessName + '\n' +
-      'Owner: ' + submission.ownerName + '\n' +
-      'Signer Role: ' + submission.signerRole + '\n' +
-      'Authority Basis: ' + submission.authorityBasis + '\n' +
+      'Signer: ' + submission.ownerName + '\n' +
+      'Role at the Business: ' + submission.signerRole + '\n' +
+      'Authority to Sign: ' + submission.authorityBasis + '\n' +
       'Email: ' + submission.businessEmail + '\n' +
       'Phone: ' + submission.businessPhone + '\n' +
       'Offer: ' + submission.offerDetails + '\n' +

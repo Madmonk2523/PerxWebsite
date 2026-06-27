@@ -40,6 +40,11 @@ const verifyEmailBtn = document.getElementById("verifyEmailBtn");
 const emailCodeInput = document.getElementById("emailCode");
 const emailVerifyStatus = document.getElementById("emailVerifyStatus");
 const phoneVerifyStatus = document.getElementById("phoneVerifyStatus");
+const authoritySignerName = document.getElementById("authoritySignerName");
+const authoritySignerTitle = document.getElementById("authoritySignerTitle");
+const authorityBusinessName = document.getElementById("authorityBusinessName");
+const authorityPhonePreview = document.getElementById("authorityPhonePreview");
+const authorityEmailPreview = document.getElementById("authorityEmailPreview");
 
 const agreementBox = document.getElementById("agreementBox");
 const agreementScrollStatus = document.getElementById("agreementScrollStatus");
@@ -177,6 +182,37 @@ function setupEventListeners() {
     if (onboardingForm.ownerName) {
       onboardingForm.ownerName.addEventListener("input", updateSignatureNamePreview);
     }
+
+    [
+      onboardingForm.ownerName,
+      onboardingForm.jobTitle,
+      onboardingForm.businessName,
+      onboardingForm.businessPhone,
+      onboardingForm.businessEmail
+    ].forEach((input) => {
+      if (input) {
+        input.addEventListener("input", updateAuthoritySummary);
+      }
+    });
+
+    if (onboardingForm.signerRole && onboardingForm.authorityBasis) {
+      onboardingForm.signerRole.addEventListener("change", () => {
+        const role = String(onboardingForm.signerRole.value || "");
+        const currentBasis = String(onboardingForm.authorityBasis.value || "");
+        const automaticBases = [
+          "Ownership of the business",
+          "Authority inherent in officer or executive role"
+        ];
+
+        if (role === "Owner or Co-owner") {
+          onboardingForm.authorityBasis.value = automaticBases[0];
+        } else if (role === "Corporate Officer or Executive") {
+          onboardingForm.authorityBasis.value = automaticBases[1];
+        } else if (automaticBases.includes(currentBasis)) {
+          onboardingForm.authorityBasis.value = "";
+        }
+      });
+    }
   }
 }
 
@@ -227,6 +263,10 @@ function renderStep() {
     const lastStep = state.step === state.totalSteps;
     nextBtn.classList.toggle("is-hidden", lastStep);
     joinBtn.classList.toggle("is-hidden", !lastStep);
+  }
+
+  if (state.step === 3) {
+    updateAuthoritySummary();
   }
 
   if (state.step === state.totalSteps) {
@@ -304,13 +344,13 @@ async function validateCurrentStep() {
 
   if (state.step === 3) {
     if (!String(onboardingForm.signerRole.value || "").trim()) {
-      setFeedback("Please select the signer's relationship to the business.", "error");
+      setFeedback("Please select your role at the business.", "error");
       onboardingForm.signerRole.focus();
       return false;
     }
 
     if (!String(onboardingForm.authorityBasis.value || "").trim()) {
-      setFeedback("Please explain the signer's authority to bind the business.", "error");
+      setFeedback("Please select what gives you authority to sign for the business.", "error");
       onboardingForm.authorityBasis.focus();
       return false;
     }
@@ -415,7 +455,7 @@ async function sendVerificationCodes() {
     state.phoneVerified = false;
 
     setStatusPill(emailVerifyStatus, "Email code sent. Awaiting confirmation.", "warning");
-    setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
+    setStatusPill(phoneVerifyStatus, "Phone review pending", "neutral");
 
     setFeedback(result.message || "Confirmation code sent.", "success");
   } catch (error) {
@@ -474,7 +514,7 @@ function resetVerificationState() {
   }
 
   setStatusPill(emailVerifyStatus, "Not confirmed", "neutral");
-  setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
+  setStatusPill(phoneVerifyStatus, "Phone review pending", "neutral");
 }
 
 async function submitAgreement(event) {
@@ -609,7 +649,7 @@ function resetFormFlow() {
     emailCodeInput.value = "";
   }
   setStatusPill(emailVerifyStatus, "Not confirmed", "neutral");
-  setStatusPill(phoneVerifyStatus, "Manual confirmation may be needed", "neutral");
+  setStatusPill(phoneVerifyStatus, "Phone review pending", "neutral");
   setStatusPill(agreementScrollStatus, "Scroll to the bottom to continue", "warning");
   setZipLocationStatus("Enter a 5-digit New York ZIP code", "neutral");
   updateSignatureNamePreview();
@@ -732,6 +772,34 @@ function updateSignatureNamePreview() {
 
   const name = String(onboardingForm.ownerName.value || "").trim();
   signatureNamePreview.textContent = name || "Authorized representative";
+}
+
+function updateAuthoritySummary() {
+  if (!onboardingForm) {
+    return;
+  }
+
+  const signerName = String(onboardingForm.ownerName.value || "").trim();
+  const signerTitle = String(onboardingForm.jobTitle.value || "").trim();
+  const businessName = String(onboardingForm.businessName.value || "").trim();
+  const businessPhone = String(onboardingForm.businessPhone.value || "").trim();
+  const businessEmail = String(onboardingForm.businessEmail.value || "").trim();
+
+  if (authoritySignerName) {
+    authoritySignerName.textContent = signerName || "Authorized representative";
+  }
+  if (authoritySignerTitle) {
+    authoritySignerTitle.textContent = signerTitle || "Job title";
+  }
+  if (authorityBusinessName) {
+    authorityBusinessName.textContent = businessName || "Business name";
+  }
+  if (authorityPhonePreview) {
+    authorityPhonePreview.textContent = businessPhone || "Business phone";
+  }
+  if (authorityEmailPreview) {
+    authorityEmailPreview.textContent = businessEmail || "Business email";
+  }
 }
 
 function getBrowserName() {

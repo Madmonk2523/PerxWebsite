@@ -36,7 +36,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260626-2" />
+    <link rel="stylesheet" href="styles.css?v=20260626-3" />
   </head>
   <body>
     <div class="bg-grid" aria-hidden="true"></div>
@@ -276,52 +276,87 @@
           </section>
 
           <section class="step is-hidden" data-step="3" aria-hidden="true">
-            <h3>Confirm Authority</h3>
+            <h3>Verify the Signer</h3>
             <p class="step-intro">
-              Confirm that the signer can bind this business to the PERX Rewards agreement.
+              Review who is signing, identify their authority, and confirm the business email.
             </p>
+
+            <div class="authority-summary">
+              <div>
+                <span>Signer</span>
+                <strong id="authoritySignerName">Authorized representative</strong>
+                <small id="authoritySignerTitle">Job title</small>
+              </div>
+              <div>
+                <span>Signing for</span>
+                <strong id="authorityBusinessName">Business name</strong>
+                <small id="authorityPhonePreview">Business phone</small>
+              </div>
+            </div>
 
             <div class="field-grid two-col">
               <label>
-                Signer Relationship
-                <select name="signerRole" required>
-                  <option value="">Select one</option>
-                  <option value="Owner">Owner</option>
-                  <option value="Authorized Representative">Authorized Representative</option>
-                  <option value="Manager with Authorization">Manager with Authorization</option>
-                  <option value="Corporate Officer">Corporate Officer</option>
+                Role at the Business
+                <select name="signerRole" id="signerRole" required>
+                  <option value="">Select your role</option>
+                  <option value="Owner or Co-owner">Owner or Co-owner</option>
+                  <option value="Corporate Officer or Executive">Corporate Officer or Executive</option>
+                  <option value="General Manager">General Manager</option>
+                  <option value="Authorized Manager or Employee">Authorized Manager or Employee</option>
+                  <option value="Authorized External Representative">Authorized External Representative</option>
                 </select>
               </label>
               <label>
-                Authority Basis
-                <input
-                  type="text"
-                  name="authorityBasis"
-                  required
-                  placeholder="Owner, written authorization, officer role"
-                />
+                Authority to Sign
+                <select name="authorityBasis" id="authorityBasis" required>
+                  <option value="">Select the source of your authority</option>
+                  <option value="Ownership of the business">Ownership of the business</option>
+                  <option value="Authority inherent in officer or executive role">
+                    Authority inherent in officer or executive role
+                  </option>
+                  <option value="Written authorization from owner or officer">
+                    Written authorization from owner or officer
+                  </option>
+                  <option value="Standing authority under company policy or operating agreement">
+                    Standing authority under company policy or operating agreement
+                  </option>
+                  <option value="Power of attorney or other documented authority">
+                    Power of attorney or other documented authority
+                  </option>
+                </select>
               </label>
             </div>
 
-            <div class="verification-card">
-              <p class="verification-title">Business Email Confirmation</p>
-              <button type="button" class="secondary" id="sendCodesBtn">Send Email Code</button>
-              <label>
-                Enter 6-digit email code
-                <input type="text" id="emailCode" maxlength="6" inputmode="numeric" placeholder="000000" />
-              </label>
-              <button type="button" class="secondary" id="verifyEmailBtn">Confirm Email</button>
-              <p id="emailVerifyStatus" class="status-pill neutral">Not confirmed</p>
+            <div class="email-verification">
+              <div class="verification-heading">
+                <div>
+                  <span>Business email</span>
+                  <strong id="authorityEmailPreview">Email address</strong>
+                </div>
+                <p id="emailVerifyStatus" class="status-pill neutral">Not confirmed</p>
+              </div>
+              <div class="verification-controls">
+                <button type="button" class="secondary" id="sendCodesBtn">Send Code</button>
+                <label class="verification-code-field">
+                  6-digit code
+                  <input
+                    type="text"
+                    id="emailCode"
+                    maxlength="6"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    placeholder="000000"
+                  />
+                </label>
+                <button type="button" class="secondary" id="verifyEmailBtn">Verify Email</button>
+              </div>
             </div>
 
-            <div class="verification-card">
-              <p class="verification-title">Business Phone</p>
-              <p class="meta-note">
-                PERX may confirm the business phone number before approval.
-              </p>
-              <p id="phoneVerifyStatus" class="status-pill neutral">Manual confirmation may be needed</p>
+            <div class="authority-review-note">
+              <span id="phoneVerifyStatus" class="status-pill neutral">Phone review pending</span>
+              PERX may contact the business phone above if authority needs to be confirmed before
+              approval.
             </div>
-
           </section>
 
           <section class="step is-hidden" data-step="4" aria-hidden="true">
@@ -499,6 +534,6 @@
       </section>
     </main>
 
-    <script src="script.js?v=20260626-2"></script>
+    <script src="script.js?v=20260626-3"></script>
   </body>
 </html>
