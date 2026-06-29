@@ -396,7 +396,7 @@ function normalizeSubmissionPayload_(payload) {
 
   return {
     sessionId: cleanText_(payload.sessionId),
-    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.26-r3',
+    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.29-r4',
     businessName: cleanText_(payload.businessName),
     businessAddress: cleanText_(payload.businessAddress),
     city: cleanText_(payload.city),
@@ -745,7 +745,11 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
 
   body.appendParagraph('');
   body.appendParagraph('3. Participation Term').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. The Business\'s participation begins on the Launch Date. The Business agrees to remain an active participant on PERX and honor the agreed offer for twelve (12) months beginning on the Launch Date. After the initial 12-month period, this Agreement automatically renews month-to-month unless either party provides at least 30 days written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date.');
+  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. The Business\'s participation begins on the Launch Date. The initial term begins on the Launch Date and continues through the end of the twelve (12) consecutive paid months described in Section 3.1 ("Initial Term"). The Business agrees to remain an active participant on PERX and honor the agreed offer throughout the Initial Term. After the Initial Term, this Agreement automatically renews month-to-month unless either party provides at least 30 days\' written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date.');
+
+  body.appendParagraph('');
+  body.appendParagraph('3.1 Free Month; Fees and Payment').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('The Business will not be charged a participation fee for the first one (1) month after the Launch Date. Beginning on the one-month anniversary of the Launch Date, the Business agrees to pay PERX a participation fee of fifty dollars ($50.00) per month for no fewer than twelve (12) consecutive paid months. The first payment is due on the one-month anniversary of the Launch Date, and each subsequent payment is due monthly in advance. The minimum payment commitment is twelve (12) payments totaling six hundred dollars ($600.00), in addition to the free month. Ending participation before all twelve payments have been made does not eliminate the Business\'s obligation to pay the unpaid balance of this minimum commitment unless PERX agrees otherwise in writing. After the Initial Term, the $50.00 monthly fee continues during any month-to-month renewal until this Agreement is ended under Section 6.');
 
   body.appendParagraph('');
   body.appendParagraph('4. Business Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -757,7 +761,7 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
 
   body.appendParagraph('');
   body.appendParagraph('6. Ending This Agreement').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business may end this Agreement before the end of the initial 12-month term only if the Business permanently closes; the Business is sold to a new owner who chooses not to participate; continuing the agreed offer becomes unlawful; or PERX agrees in writing. PERX may immediately remove the Business from the platform if the Business repeatedly refuses to honor the agreed offer, provides false information, engages in fraudulent or illegal activity, or materially breaches this Agreement.');
+  body.appendParagraph('The Business may end this Agreement before the end of the Initial Term only if the Business permanently closes; the Business is sold to a new owner who chooses not to participate; continuing the agreed offer becomes unlawful; or PERX agrees in writing. PERX may immediately remove the Business from the platform if the Business repeatedly refuses to honor the agreed offer, provides false information, engages in fraudulent or illegal activity, or materially breaches this Agreement. Ending participation or removal from the platform does not waive the Business\'s minimum payment commitment under Section 3.1 unless PERX agrees otherwise in writing.');
 
   body.appendParagraph('');
   body.appendParagraph('7. Responsibility').setHeading(DocumentApp.ParagraphHeading.HEADING2);

@@ -1,5 +1,5 @@
 const BACKEND_ENDPOINT = "https://script.google.com/macros/s/AKfycbwzakRd5psqLOgZPdgu9HoZj79bM6WbS5KQy1DY6UbYjj367KlvcDJehqSU9GOsK2IH/exec";
-const AGREEMENT_VERSION = "2026.06.26-r3";
+const AGREEMENT_VERSION = "2026.06.29-r4";
 
 const state = {
   step: 1,
