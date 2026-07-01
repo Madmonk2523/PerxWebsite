@@ -396,7 +396,7 @@ function normalizeSubmissionPayload_(payload) {
 
   return {
     sessionId: cleanText_(payload.sessionId),
-    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.29-r4',
+    agreementVersion: cleanText_(payload.agreementVersion) || '2026.07.01-r5',
     businessName: cleanText_(payload.businessName),
     businessAddress: cleanText_(payload.businessAddress),
     city: cleanText_(payload.city),
@@ -741,35 +741,47 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
 
   body.appendParagraph('');
   body.appendParagraph('2. Agreed Offer').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business authorizes PERX to select a discount amount up to the maximum submitted by the Business and to set an appropriate minimum purchase requirement. A discount pass becomes available when an eligible customer enters and passes through the Business\'s PERX proximity circle. After a customer claims a discount, that customer\'s eligibility resets after 24 hours. The Business agrees to honor the final offer published by PERX beginning on the Launch Date.');
+  body.appendParagraph('The Business authorizes PERX to select a discount amount up to the maximum submitted by the Business and to set an appropriate minimum purchase requirement. A discount pass becomes available when an eligible customer enters and passes through the Business\'s PERX proximity circle. After a customer claims a discount, that customer\'s eligibility resets after 24 hours. PERX has sole and absolute discretion to determine the final offer terms, provided the discount does not exceed the maximum submitted by the Business. The Business agrees to honor the final offer published by PERX beginning on the Launch Date.');
 
   body.appendParagraph('');
   body.appendParagraph('3. Participation Term').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. The Business\'s participation begins on the Launch Date. The initial term begins on the Launch Date and continues through the end of the twelve (12) consecutive paid months described in Section 3.1 ("Initial Term"). The Business agrees to remain an active participant on PERX and honor the agreed offer throughout the Initial Term. After the Initial Term, this Agreement automatically renews month-to-month unless either party provides at least 30 days\' written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date.');
 
   body.appendParagraph('');
-  body.appendParagraph('3.1 Free Month; Fees and Payment').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business will not be charged a participation fee for the first one (1) month after the Launch Date. Beginning on the one-month anniversary of the Launch Date, the Business agrees to pay PERX a participation fee of fifty dollars ($50.00) per month for no fewer than twelve (12) consecutive paid months. The first payment is due on the one-month anniversary of the Launch Date, and each subsequent payment is due monthly in advance. The minimum payment commitment is twelve (12) payments totaling six hundred dollars ($600.00), in addition to the free month. Ending participation before all twelve payments have been made does not eliminate the Business\'s obligation to pay the unpaid balance of this minimum commitment unless PERX agrees otherwise in writing. After the Initial Term, the $50.00 monthly fee continues during any month-to-month renewal until this Agreement is ended under Section 6.');
+  body.appendParagraph('3.1 Fees and Payment').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('The Business agrees to pay PERX a participation fee of fifty dollars ($50.00) per month for no fewer than twelve (12) consecutive paid months beginning on the Launch Date. The first payment is due on the Launch Date, and each subsequent payment is due monthly in advance. The minimum payment commitment is twelve (12) payments totaling six hundred dollars ($600.00). Ending participation before all twelve payments have been made does not eliminate the Business\'s obligation to pay the unpaid balance of this minimum commitment unless PERX agrees otherwise in writing. After the Initial Term, the $50.00 monthly fee continues during any month-to-month renewal until this Agreement is ended under Section 6.');
 
   body.appendParagraph('');
   body.appendParagraph('4. Business Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business agrees to honor the agreed offer, maintain accurate business information, notify PERX if its contact information or offer changes, and comply with applicable laws. The Business grants PERX permission to use its business name, logo, address, website, business hours, photographs approved by the Business, business description, and social media handles solely to promote the Business through PERX. The Business confirms it has the authority to grant this permission.');
+  body.appendParagraph('The Business agrees to honor the agreed offer, maintain accurate business information, notify PERX if its contact information or offer changes, and comply with applicable laws. The Business grants PERX a non-exclusive, royalty-free, worldwide right and license to use any and all of its business name, logo, address, website, business hours, photographs approved by the Business, business description, and social media handles solely to promote the Business through PERX. The Business confirms it has the authority to grant these rights.');
 
   body.appendParagraph('');
   body.appendParagraph('5. PERX Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('PERX agrees to operate its platform in good faith and make reasonable efforts to maintain accurate Business information. PERX does not guarantee customer traffic, sales, revenue, or profits.');
+  body.appendParagraph('PERX agrees to operate its platform in good faith and make reasonable efforts to maintain accurate Business information. PERX does not guarantee any type of customer traffic, sales, revenue, profits, or other business results.');
 
   body.appendParagraph('');
   body.appendParagraph('6. Ending This Agreement').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business may end this Agreement before the end of the Initial Term only if the Business permanently closes; the Business is sold to a new owner who chooses not to participate; continuing the agreed offer becomes unlawful; or PERX agrees in writing. PERX may immediately remove the Business from the platform if the Business repeatedly refuses to honor the agreed offer, provides false information, engages in fraudulent or illegal activity, or materially breaches this Agreement. Ending participation or removal from the platform does not waive the Business\'s minimum payment commitment under Section 3.1 unless PERX agrees otherwise in writing.');
+  body.appendParagraph('The Business may end this Agreement before the end of the Initial Term only if the Business permanently closes; continuing the agreed offer becomes unlawful; or PERX agrees in writing. PERX may immediately remove the Business from the platform if the Business repeatedly refuses to honor the agreed offer, provides false information, engages in fraudulent or illegal activity, materially breaches this Agreement, or in any way harms the business reputation of PERX. Ending participation or removal from the platform does not waive the Business\'s minimum payment commitment under Section 3.1 unless PERX agrees otherwise in writing.');
 
   body.appendParagraph('');
   body.appendParagraph('7. Responsibility').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('Each party is responsible for its own actions. The Business is responsible for its products, services, pricing, refunds, taxes, customer service, and compliance with applicable law. PERX is not responsible for disputes between the Business and its customers.');
+  body.appendParagraph('Each party is responsible for its own actions. The Business is responsible for its products, services, pricing, refunds, taxes, customer service, and compliance with applicable law. PERX is not responsible for any and all disputes between the Business and its customers.');
 
   body.appendParagraph('');
   body.appendParagraph('8. General Terms').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph('This Agreement is governed by the laws of the State of New York. This Agreement contains the complete agreement between PERX and the Business regarding participation in PERX Rewards. Any changes to this Agreement must be agreed to in writing by both parties. If any part of this Agreement is found to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.');
+
+  body.appendParagraph('');
+  body.appendParagraph('9. Electronic Execution').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. No separate PERX signature is required. Business activation remains subject to PERX approval.');
+
+  body.appendParagraph('');
+  body.appendParagraph('10. Limitation of Liability').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('In no event shall PERX\'s liability under this Agreement exceed the total amount paid by the Business to PERX during the initial twelve (12) months of this Agreement.');
+
+  body.appendParagraph('');
+  body.appendParagraph('11. Waiver of Jury Trial').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph('Each party hereby waives any and all rights that they may have to a jury trial in connection with any dispute arising out of this Agreement and/or the business relationship between the Business and PERX.');
 
   body.appendParagraph('');
   body.appendParagraph('Agreement Confirmations').setHeading(DocumentApp.ParagraphHeading.HEADING2);
