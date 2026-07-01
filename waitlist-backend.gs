@@ -282,9 +282,29 @@ function submitAgreement_(payload) {
   });
 
   const sheet = getOrCreateSubmissionSheet_();
-  sheet.appendRow(rowData);
-  const submissionRow = sheet.getLastRow();
-  formatSubmissionSheet_(sheet);
+  let submissionRow = 0;
+
+  try {
+    sheet.appendRow(rowData);
+    submissionRow = sheet.getLastRow();
+  } catch (error) {
+    try {
+      submissionRow = sheet.getLastRow() + 1;
+      sheet.getRange(submissionRow, 1, 1, rowData.length).setValues([rowData]);
+    } catch (fallbackError) {
+      throw fallbackError;
+    }
+  }
+
+  try {
+    formatSubmissionSheet_(sheet);
+  } catch (error) {
+    tryLogAudit_('SUBMISSION_SHEET_FORMATTING_FAILED', {
+      agreementId,
+      message: getErrorMessage_(error),
+      stack: getErrorStack_(error)
+    });
+  }
 
   try {
     sendBusinessConfirmation_(submission, agreementId, pdfResult.file);
@@ -834,6 +854,13 @@ function buildSignatureImageBlob_(serializedSignature) {
     return null;
   }
 
+  const width = 1000;
+  const height = 300;
+  const pixels = new Array(width * height * 3);
+  for (let index = 0; index < pixels.length; index += 1) {
+    pixels[index] = 255;
+  }
+
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -855,47 +882,139 @@ function buildSignatureImageBlob_(serializedSignature) {
     return null;
   }
 
-  const targetWidth = 720;
-  const targetHeight = 220;
-  const padding = 18;
   const sourceWidth = Math.max(maxX - minX, 1);
   const sourceHeight = Math.max(maxY - minY, 1);
   const scale = Math.min(
-    (targetWidth - padding * 2) / sourceWidth,
-    (targetHeight - padding * 2) / sourceHeight
+    (width - 36) / sourceWidth,
+    (height - 36) / sourceHeight
   );
-  const offsetX = Math.round((targetWidth - sourceWidth * scale) / 2 - minX * scale);
-  const offsetY = Math.round((targetHeight - sourceHeight * scale) / 2 - minY * scale);
-
-  const svgParts = [
-    '<svg xmlns="http://www.w3.org/2000/svg" width="' + targetWidth + '" height="' + targetHeight + '" viewBox="0 0 ' + targetWidth + ' ' + targetHeight + '">',
-    '<rect width="100%" height="100%" fill="#ffffff"/>',
-    '<g fill="none" stroke="#0d3b76" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">'
-  ];
+  const offsetX = Math.round((width - sourceWidth * scale) / 2 - minX * scale);
+  const offsetY = Math.round((height - sourceHeight * scale) / 2 - minY * scale);
 
   strokes.forEach(function (stroke) {
     if (!stroke.length) {
       return;
     }
 
-    const points = stroke
-      .filter(function (point) {
-        return typeof point.x === 'number' && typeof point.y === 'number';
-      })
-      .map(function (point) {
-        const x = Math.round(point.x * scale + offsetX);
-        const y = Math.round(point.y * scale + offsetY);
-        return x + ',' + y;
-      });
+    let previousPoint = null;
 
-    if (points.length >= 2) {
-      svgParts.push('<polyline points="' + points.join(' ') + '"/>');
-    }
+    stroke.forEach(function (point) {
+      if (typeof point.x !== 'number' || typeof point.y !== 'number') {
+        return;
+      }
+
+      const currentPoint = {
+        x: Math.round(point.x * scale + offsetX),
+        y: Math.round(point.y * scale + offsetY)
+      };
+
+      if (previousPoint) {
+        drawSignatureLine_(pixels, width, height, previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
+      }
+
+      previousPoint = currentPoint;
+    });
   });
 
-  svgParts.push('</g></svg>');
+  const rowSize = Math.ceil((width * 3) / 4) * 4;
+  const fileSize = 54 + (rowSize * height);
+  const buffer = new Array(fileSize);
 
-  return Utilities.newBlob(svgParts.join(''), 'image/svg+xml', 'signature.svg');
+  // BITMAPFILEHEADER
+  buffer[0] = 0x42;
+  buffer[1] = 0x4d;
+  writeUint32LE_(buffer, 2, fileSize);
+  writeUint32LE_(buffer, 10, 54);
+
+  // BITMAPINFOHEADER
+  writeUint32LE_(buffer, 14, 40);
+  writeUint32LE_(buffer, 18, width);
+  writeUint32LE_(buffer, 22, height);
+  writeUint16LE_(buffer, 26, 1);
+  writeUint16LE_(buffer, 28, 24);
+  writeUint32LE_(buffer, 30, 0);
+  writeUint32LE_(buffer, 34, rowSize * height);
+  writeUint32LE_(buffer, 38, 2835);
+  writeUint32LE_(buffer, 42, 2835);
+  writeUint32LE_(buffer, 46, 0);
+  writeUint32LE_(buffer, 50, 0);
+
+  let offset = 54;
+  const paddingBytes = rowSize - (width * 3);
+  for (let y = height - 1; y >= 0; y -= 1) {
+    for (let x = 0; x < width; x += 1) {
+      const pixelIndex = (y * width + x) * 3;
+      buffer[offset] = pixels[pixelIndex + 2];
+      buffer[offset + 1] = pixels[pixelIndex + 1];
+      buffer[offset + 2] = pixels[pixelIndex];
+      offset += 3;
+    }
+
+    for (let pad = 0; pad < paddingBytes; pad += 1) {
+      buffer[offset] = 0;
+      offset += 1;
+    }
+  }
+
+  return Utilities.newBlob(buffer, 'image/bmp', 'signature.bmp');
+}
+
+function drawSignatureLine_(pixels, width, height, startX, startY, endX, endY) {
+  let x0 = startX;
+  let y0 = startY;
+  const x1 = endX;
+  const y1 = endY;
+
+  const deltaX = Math.abs(x1 - x0);
+  const deltaY = Math.abs(y1 - y0);
+  const stepX = x0 < x1 ? 1 : -1;
+  const stepY = y0 < y1 ? 1 : -1;
+  let error = deltaX - deltaY;
+
+  while (true) {
+    paintSignaturePixel_(pixels, width, height, x0, y0);
+    paintSignaturePixel_(pixels, width, height, x0 + 1, y0);
+    paintSignaturePixel_(pixels, width, height, x0 - 1, y0);
+    paintSignaturePixel_(pixels, width, height, x0, y0 + 1);
+    paintSignaturePixel_(pixels, width, height, x0, y0 - 1);
+
+    if (x0 === x1 && y0 === y1) {
+      break;
+    }
+
+    const doubleError = error * 2;
+    if (doubleError > -deltaY) {
+      error -= deltaY;
+      x0 += stepX;
+    }
+    if (doubleError < deltaX) {
+      error += deltaX;
+      y0 += stepY;
+    }
+  }
+}
+
+function paintSignaturePixel_(pixels, width, height, x, y) {
+  if (x < 0 || y < 0 || x >= width || y >= height) {
+    return;
+  }
+
+  const pixelIndex = (y * width + x) * 3;
+  pixels[pixelIndex] = 13;
+  pixels[pixelIndex + 1] = 59;
+  pixels[pixelIndex + 2] = 118;
+}
+
+function writeUint16LE_(buffer, offset, value) {
+  buffer[offset] = value & 0xff;
+  buffer[offset + 1] = (value >> 8) & 0xff;
+}
+
+function writeUint32LE_(buffer, offset, value) {
+  buffer[offset] = value & 0xff;
+  buffer[offset + 1] = (value >> 8) & 0xff;
+  buffer[offset + 2] = (value >> 16) & 0xff;
+  buffer[offset + 3] = (value >> 24) & 0xff;
 }
 
 function decodeSignatureStrokes_(serializedSignature) {
