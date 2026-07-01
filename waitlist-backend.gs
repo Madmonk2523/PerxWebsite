@@ -256,7 +256,7 @@ function submitAgreement_(payload) {
   const processingNotes = [];
 
   try {
-    pdfResult = generateAgreementPdf_(submission, verification.session, agreementId, fraudFlags, now);
+    pdfResult = generateAgreementPdf_(submission, verification.session, agreementId, now);
   } catch (error) {
     const message = 'PDF generation failed: ' + getErrorMessage_(error);
     processingNotes.push(message);
@@ -699,7 +699,7 @@ function buildSubmissionRow_(submission, session, context) {
   ];
 }
 
-function generateAgreementPdf_(submission, session, agreementId, fraudFlags, submittedAt) {
+function generateAgreementPdf_(submission, session, agreementId, submittedAt) {
   const docName = agreementId + ' - ' + submission.businessName + ' - Signed Agreement';
   const doc = DocumentApp.create(docName);
   const body = doc.getBody();
