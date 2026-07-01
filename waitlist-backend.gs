@@ -284,6 +284,7 @@ function submitAgreement_(payload) {
   const sheet = getOrCreateSubmissionSheet_();
   sheet.appendRow(rowData);
   const submissionRow = sheet.getLastRow();
+  formatSubmissionSheet_(sheet);
 
   try {
     sendBusinessConfirmation_(submission, agreementId, pdfResult.file);
@@ -396,7 +397,7 @@ function normalizeSubmissionPayload_(payload) {
 
   return {
     sessionId: cleanText_(payload.sessionId),
-    agreementVersion: cleanText_(payload.agreementVersion) || '2026.07.01-r5',
+    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.26-r3',
     businessName: cleanText_(payload.businessName),
     businessAddress: cleanText_(payload.businessAddress),
     city: cleanText_(payload.city),
@@ -741,47 +742,31 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
 
   body.appendParagraph('');
   body.appendParagraph('2. Agreed Offer').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business authorizes PERX to select a discount amount up to the maximum submitted by the Business and to set an appropriate minimum purchase requirement. A discount pass becomes available when an eligible customer enters and passes through the Business\'s PERX proximity circle. After a customer claims a discount, that customer\'s eligibility resets after 24 hours. PERX has sole and absolute discretion to determine the final offer terms, provided the discount does not exceed the maximum submitted by the Business. The Business agrees to honor the final offer published by PERX beginning on the Launch Date.');
+  body.appendParagraph('The Business authorizes PERX to select a discount amount up to the maximum submitted by the Business and to set an appropriate minimum purchase requirement. A discount pass becomes available when an eligible customer enters and passes through the Business\'s PERX proximity circle. After a customer claims a discount, that customer\'s eligibility resets after 24 hours. The Business agrees to honor the final offer published by PERX beginning on the Launch Date.');
 
   body.appendParagraph('');
   body.appendParagraph('3. Participation Term').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. The Business\'s participation begins on the Launch Date. The initial term begins on the Launch Date and continues through the end of the twelve (12) consecutive paid months described in Section 3.1 ("Initial Term"). The Business agrees to remain an active participant on PERX and honor the agreed offer throughout the Initial Term. After the Initial Term, this Agreement automatically renews month-to-month unless either party provides at least 30 days\' written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date.');
-
-  body.appendParagraph('');
-  body.appendParagraph('3.1 Fees and Payment').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business agrees to pay PERX a participation fee of fifty dollars ($50.00) per month for no fewer than twelve (12) consecutive paid months beginning on the Launch Date. The first payment is due on the Launch Date, and each subsequent payment is due monthly in advance. The minimum payment commitment is twelve (12) payments totaling six hundred dollars ($600.00). Ending participation before all twelve payments have been made does not eliminate the Business\'s obligation to pay the unpaid balance of this minimum commitment unless PERX agrees otherwise in writing. After the Initial Term, the $50.00 monthly fee continues during any month-to-month renewal until this Agreement is ended under Section 6.');
+  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. The Business\'s participation begins on the Launch Date. The Business agrees to remain an active participant on PERX and honor the agreed offer for twelve (12) months beginning on the Launch Date. After the initial 12-month period, this Agreement automatically renews month-to-month unless either party provides at least 30 days written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date.');
 
   body.appendParagraph('');
   body.appendParagraph('4. Business Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business agrees to honor the agreed offer, maintain accurate business information, notify PERX if its contact information or offer changes, and comply with applicable laws. The Business grants PERX a non-exclusive, royalty-free, worldwide right and license to use any and all of its business name, logo, address, website, business hours, photographs approved by the Business, business description, and social media handles solely to promote the Business through PERX. The Business confirms it has the authority to grant these rights.');
+  body.appendParagraph('The Business agrees to honor the agreed offer, maintain accurate business information, notify PERX if its contact information or offer changes, and comply with applicable laws. The Business grants PERX permission to use its business name, logo, address, website, business hours, photographs approved by the Business, business description, and social media handles solely to promote the Business through PERX. The Business confirms it has the authority to grant this permission.');
 
   body.appendParagraph('');
   body.appendParagraph('5. PERX Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('PERX agrees to operate its platform in good faith and make reasonable efforts to maintain accurate Business information. PERX does not guarantee any type of customer traffic, sales, revenue, profits, or other business results.');
+  body.appendParagraph('PERX agrees to operate its platform in good faith and make reasonable efforts to maintain accurate Business information. PERX does not guarantee customer traffic, sales, revenue, or profits.');
 
   body.appendParagraph('');
   body.appendParagraph('6. Ending This Agreement').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business may end this Agreement before the end of the Initial Term only if the Business permanently closes; continuing the agreed offer becomes unlawful; or PERX agrees in writing. PERX may immediately remove the Business from the platform if the Business repeatedly refuses to honor the agreed offer, provides false information, engages in fraudulent or illegal activity, materially breaches this Agreement, or in any way harms the business reputation of PERX. Ending participation or removal from the platform does not waive the Business\'s minimum payment commitment under Section 3.1 unless PERX agrees otherwise in writing.');
+  body.appendParagraph('The Business may end this Agreement before the end of the initial 12-month term only if the Business permanently closes; the Business is sold to a new owner who chooses not to participate; continuing the agreed offer becomes unlawful; or PERX agrees in writing. PERX may immediately remove the Business from the platform if the Business repeatedly refuses to honor the agreed offer, provides false information, engages in fraudulent or illegal activity, or materially breaches this Agreement.');
 
   body.appendParagraph('');
   body.appendParagraph('7. Responsibility').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('Each party is responsible for its own actions. The Business is responsible for its products, services, pricing, refunds, taxes, customer service, and compliance with applicable law. PERX is not responsible for any and all disputes between the Business and its customers.');
+  body.appendParagraph('Each party is responsible for its own actions. The Business is responsible for its products, services, pricing, refunds, taxes, customer service, and compliance with applicable law. PERX is not responsible for disputes between the Business and its customers.');
 
   body.appendParagraph('');
   body.appendParagraph('8. General Terms').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph('This Agreement is governed by the laws of the State of New York. This Agreement contains the complete agreement between PERX and the Business regarding participation in PERX Rewards. Any changes to this Agreement must be agreed to in writing by both parties. If any part of this Agreement is found to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.');
-
-  body.appendParagraph('');
-  body.appendParagraph('9. Electronic Execution').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. No separate PERX signature is required. Business activation remains subject to PERX approval.');
-
-  body.appendParagraph('');
-  body.appendParagraph('10. Limitation of Liability').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('In no event shall PERX\'s liability under this Agreement exceed the total amount paid by the Business to PERX during the initial twelve (12) months of this Agreement.');
-
-  body.appendParagraph('');
-  body.appendParagraph('11. Waiver of Jury Trial').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('Each party hereby waives any and all rights that they may have to a jury trial in connection with any dispute arising out of this Agreement and/or the business relationship between the Business and PERX.');
 
   body.appendParagraph('');
   body.appendParagraph('Agreement Confirmations').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -798,8 +783,18 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   body.appendParagraph('Business Name: ' + submission.businessName);
   body.appendParagraph('Authorized Representative: ' + submission.ownerName);
   body.appendParagraph('Title: ' + submission.jobTitle);
-  body.appendParagraph('Signature: /s/ ' + submission.signatureName);
-  body.appendParagraph('Printed Name: ' + submission.signatureName);
+  const signatureBlob = buildSignatureImageBlob_(submission.drawnSignature);
+
+  if (signatureBlob) {
+    body.appendParagraph('Signature Image:');
+    const signatureImageParagraph = body.appendParagraph('');
+    const signatureImage = signatureImageParagraph.appendInlineImage(signatureBlob);
+    signatureImage.setWidth(260);
+    body.appendParagraph('Printed Name: ' + submission.signatureName);
+  } else {
+    body.appendParagraph('Signature: /s/ ' + submission.signatureName);
+    body.appendParagraph('Printed Name: ' + submission.signatureName);
+  }
   body.appendParagraph('Date: ' + submission.signatureDate);
 
   body.appendParagraph('');
@@ -818,12 +813,6 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
   body.appendParagraph('Approximate Location: ' + submission.approxLocation);
 
   body.appendParagraph('');
-  body.appendParagraph('Automated Fraud Detection Flags').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  fraudFlags.forEach(function (flag) {
-    body.appendParagraph('- ' + flag);
-  });
-
-  body.appendParagraph('');
   body.appendParagraph('PERX retains this agreement and associated metadata as part of a permanent audit record.');
 
   doc.saveAndClose();
@@ -837,6 +826,115 @@ function generateAgreementPdf_(submission, session, agreementId, fraudFlags, sub
     file: pdfFile,
     url: pdfFile.getUrl()
   };
+}
+
+function buildSignatureImageBlob_(serializedSignature) {
+  const strokes = decodeSignatureStrokes_(serializedSignature);
+  if (!strokes.length) {
+    return null;
+  }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  strokes.forEach(function (stroke) {
+    stroke.forEach(function (point) {
+      if (typeof point.x !== 'number' || typeof point.y !== 'number') {
+        return;
+      }
+      if (point.x < minX) minX = point.x;
+      if (point.y < minY) minY = point.y;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y > maxY) maxY = point.y;
+    });
+  });
+
+  if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+    return null;
+  }
+
+  const targetWidth = 720;
+  const targetHeight = 220;
+  const padding = 18;
+  const sourceWidth = Math.max(maxX - minX, 1);
+  const sourceHeight = Math.max(maxY - minY, 1);
+  const scale = Math.min(
+    (targetWidth - padding * 2) / sourceWidth,
+    (targetHeight - padding * 2) / sourceHeight
+  );
+  const offsetX = Math.round((targetWidth - sourceWidth * scale) / 2 - minX * scale);
+  const offsetY = Math.round((targetHeight - sourceHeight * scale) / 2 - minY * scale);
+
+  const svgParts = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + targetWidth + '" height="' + targetHeight + '" viewBox="0 0 ' + targetWidth + ' ' + targetHeight + '">',
+    '<rect width="100%" height="100%" fill="#ffffff"/>',
+    '<g fill="none" stroke="#0d3b76" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">'
+  ];
+
+  strokes.forEach(function (stroke) {
+    if (!stroke.length) {
+      return;
+    }
+
+    const points = stroke
+      .filter(function (point) {
+        return typeof point.x === 'number' && typeof point.y === 'number';
+      })
+      .map(function (point) {
+        const x = Math.round(point.x * scale + offsetX);
+        const y = Math.round(point.y * scale + offsetY);
+        return x + ',' + y;
+      });
+
+    if (points.length >= 2) {
+      svgParts.push('<polyline points="' + points.join(' ') + '"/>');
+    }
+  });
+
+  svgParts.push('</g></svg>');
+
+  return Utilities.newBlob(svgParts.join(''), 'image/svg+xml', 'signature.svg');
+}
+
+function decodeSignatureStrokes_(serializedSignature) {
+  const raw = String(serializedSignature || '').trim();
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const bytes = Utilities.base64Decode(raw);
+    const json = Utilities.newBlob(bytes).getDataAsString();
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map(function (stroke) {
+        if (!Array.isArray(stroke)) {
+          return [];
+        }
+
+        return stroke
+          .map(function (point) {
+            return {
+              x: Number(point && point.x),
+              y: Number(point && point.y)
+            };
+          })
+          .filter(function (point) {
+            return isFinite(point.x) && isFinite(point.y);
+          });
+      })
+      .filter(function (stroke) {
+        return stroke.length > 0;
+      });
+  } catch (error) {
+    return [];
+  }
 }
 
 function sendBusinessConfirmation_(submission, agreementId, pdfFile) {
@@ -901,7 +999,6 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
     ' | Phone ' +
     escapeHtml_(verificationStatusLabel_(submission.phoneVerificationStatus)) +
     '</p>' +
-    '<p><strong>Fraud Flags:</strong> ' + escapeHtml_(fraudFlags.join(' | ')) + '</p>' +
     pdfHtml +
     '<p><a href="' + escapeHtml_(approveUrl) + '">Approve</a> | ' +
     '<a href="' + escapeHtml_(rejectUrl) + '">Reject</a> | ' +
@@ -927,7 +1024,6 @@ function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, 
       'Status: ' + status + '\n' +
       'Verification: Email ' + verificationStatusLabel_(submission.emailVerificationStatus) +
       ' | Phone ' + verificationStatusLabel_(submission.phoneVerificationStatus) + '\n' +
-      'Fraud Flags: ' + fraudFlags.join(' | ') + '\n' +
       'PDF: ' + pdfText + '\n\n' +
       'Approve: ' + approveUrl + '\n' +
       'Reject: ' + rejectUrl + '\n' +
@@ -1057,6 +1153,7 @@ function getOrCreateSubmissionSheet_() {
 
   const expectedColumns = headers[0].length;
   ensureHeaders_(sheet, headers, expectedColumns);
+  formatSubmissionSheet_(sheet);
   return sheet;
 }
 
@@ -1138,6 +1235,56 @@ function ensureHeaders_(sheet, headers, expectedColumns) {
   }
 
   sheet.getRange(1, 1, 1, expectedColumns).setValues(headers);
+}
+
+function formatSubmissionSheet_(sheet) {
+  const lastColumn = sheet.getLastColumn();
+  if (lastColumn < 1) {
+    return;
+  }
+
+  sheet.setFrozenRows(1);
+  sheet.clearBandings();
+  sheet.getRange(1, 1, 1, lastColumn)
+    .setFontWeight('bold')
+    .setBackground('#10233f')
+    .setFontColor('#ffffff')
+    .setVerticalAlignment('middle');
+
+  const existingFilter = sheet.getFilter();
+  if (!existingFilter) {
+    sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 1), lastColumn).createFilter();
+  }
+
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn)
+      .setVerticalAlignment('middle')
+      .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+
+    sheet.getRange(1, 1, sheet.getLastRow(), lastColumn)
+      .applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false);
+  }
+
+  sheet.setColumnWidth(1, 132);
+  sheet.setColumnWidth(2, 160);
+  sheet.setColumnWidth(3, 132);
+  sheet.setColumnWidth(4, 180);
+  sheet.setColumnWidth(5, 150);
+  sheet.autoResizeColumns(6, Math.min(lastColumn - 5, 8));
+  if (lastColumn > 13) {
+    sheet.setColumnWidths(14, Math.min(lastColumn - 13, 10), 180);
+  }
+  if (lastColumn > 23) {
+    sheet.setColumnWidths(24, Math.min(lastColumn - 23, 10), 170);
+  }
+  if (lastColumn > 33) {
+    sheet.setColumnWidths(34, Math.min(lastColumn - 33, 8), 150);
+  }
+
+  if (lastColumn >= 41) {
+    sheet.hideColumns(34);
+    sheet.hideColumns(41);
+  }
 }
 
 function findVerificationSessionRow_(sessionId) {
