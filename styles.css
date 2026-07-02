@@ -133,6 +133,28 @@ h3 {
   color: var(--muted);
 }
 
+.pricing-disclosure {
+  margin: 0.8rem auto 0;
+  max-width: 38rem;
+  padding: 0.62rem 0.78rem;
+  border: 1px solid rgba(15, 111, 255, 0.28);
+  border-left: 4px solid #0f6fff;
+  border-radius: 0.82rem;
+  background: rgba(15, 111, 255, 0.08);
+  color: #0e3367;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.pricing-disclosure strong {
+  color: #0d2e5f;
+}
+
+.step-pricing-disclosure {
+  margin: 0 0 0.75rem;
+  max-width: none;
+}
+
 .subtle-link-row {
   margin: 0.9rem 0 0;
   color: #60708a;
@@ -727,6 +749,11 @@ button:disabled {
 
   .lead {
     font-size: 0.95rem;
+  }
+
+  .pricing-disclosure {
+    font-size: 0.85rem;
+    padding: 0.56rem 0.7rem;
   }
 
   .zip-field-row,
