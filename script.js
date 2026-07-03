@@ -3,7 +3,7 @@ const AGREEMENT_VERSION = "2026.07.01-r6";
 
 const state = {
   step: 1,
-  totalSteps: 1,
+  totalSteps: 5,
   agreementReachedBottom: false,
   verificationSessionId: "",
   emailVerified: false,
@@ -159,6 +159,23 @@ function setupEventListeners() {
       onboardingForm.zipCode.addEventListener("input", () => {
         const zip = String(onboardingForm.zipCode.value || "").replace(/\D/g, "").slice(0, 5);
         onboardingForm.zipCode.value = zip;
+        onboardingForm.city.value = "";
+        onboardingForm.state.value = "NY";
+        onboardingForm.zipCode.dataset.resolvedZip = "";
+        zipLookupToken += 1;
+
+        if (zip.length === 5) {
+          lookupNewYorkZip(zip);
+        } else {
+          setZipLocationStatus("Enter a 5-digit New York ZIP code", "neutral");
+        }
+      });
+
+      onboardingForm.zipCode.addEventListener("blur", () => {
+        const zip = String(onboardingForm.zipCode.value || "").trim();
+        if (/^\d{5}$/.test(zip) && !String(onboardingForm.city.value || "").trim()) {
+          lookupNewYorkZip(zip);
+        }
       });
     }
 
@@ -266,11 +283,13 @@ async function validateCurrentStep() {
   if (state.step === 1) {
     const required = [
       onboardingForm.businessName,
-      onboardingForm.ownerName,
+      onboardingForm.businessAddress,
       onboardingForm.zipCode,
       onboardingForm.businessPhone,
       onboardingForm.businessEmail,
-      onboardingForm.maxDiscount
+      onboardingForm.businessCategory,
+      onboardingForm.ownerName,
+      onboardingForm.jobTitle
     ];
 
     for (const field of required) {
@@ -288,16 +307,105 @@ async function validateCurrentStep() {
       return false;
     }
 
+    const resolvedZip = String(onboardingForm.zipCode.dataset.resolvedZip || "");
+    if (
+      resolvedZip !== zip ||
+      !String(onboardingForm.city.value || "").trim() ||
+      String(onboardingForm.state.value || "").toUpperCase() !== "NY"
+    ) {
+      const zipResolved = await lookupNewYorkZip(zip);
+      if (!zipResolved) {
+        setFeedback("Please enter a valid New York ZIP code.", "error");
+        onboardingForm.zipCode.focus();
+        return false;
+      }
+    }
+
     if (!isValidEmail(onboardingForm.businessEmail.value)) {
       setFeedback("Please enter a valid business email address.", "error");
       onboardingForm.businessEmail.focus();
       return false;
     }
 
-    const discount = Number(String(onboardingForm.maxDiscount.value || "").trim());
-    if (!Number.isFinite(discount) || discount <= 0) {
-      setFeedback("Please enter a valid maximum discount amount.", "error");
+    setFeedback("", "");
+    return true;
+  }
+
+  if (state.step === 2) {
+    if (!getMaxDiscountAmount()) {
+      setFeedback("Please enter the maximum discount amount.", "error");
       onboardingForm.maxDiscount.focus();
+      return false;
+    }
+
+    setFeedback("", "");
+    return true;
+  }
+
+  if (state.step === 3) {
+    if (!String(onboardingForm.signerRole.value || "").trim()) {
+      setFeedback("Please select your role at the business.", "error");
+      onboardingForm.signerRole.focus();
+      return false;
+    }
+
+    if (!String(onboardingForm.authorityBasis.value || "").trim()) {
+      setFeedback("Please select what gives you authority to sign for the business.", "error");
+      onboardingForm.authorityBasis.focus();
+      return false;
+    }
+
+    if (!state.verificationSessionId) {
+      setFeedback("Please send and confirm the business email code before continuing.", "error");
+      return false;
+    }
+
+    if (!state.emailVerified) {
+      setFeedback("Business email confirmation is required before continuing.", "error");
+      return false;
+    }
+
+    setFeedback("", "");
+    return true;
+  }
+
+  if (state.step === 4) {
+    if (!state.agreementReachedBottom) {
+      setFeedback("Please scroll to the end of the agreement before continuing.", "error");
+      return false;
+    }
+
+    const checkboxNames = [
+      "certifyAuthority",
+      "agreeTerms",
+      "legalBinding",
+      "eSignConsent",
+      "penaltyPerjury",
+      "signatureEffectConsent"
+    ];
+
+    for (const name of checkboxNames) {
+      const input = onboardingForm[name];
+      if (!input || !input.checked) {
+        setFeedback("Please check every required agreement confirmation box.", "error");
+        input && input.focus();
+        return false;
+      }
+    }
+
+    setFeedback("", "");
+    return true;
+  }
+
+  if (state.step === 5) {
+    if (!String(onboardingForm.ownerName.value || "").trim()) {
+      setFeedback("Please return to Business Information and enter the authorized representative's name.", "error");
+      return false;
+    }
+
+    if (!String(onboardingForm.signatureDate.value || "").trim()) {
+      setFeedback("Please choose the signature date.", "error");
+      onboardingForm.signatureDate.focus();
       return false;
     }
 
@@ -416,6 +524,11 @@ async function submitAgreement(event) {
     return;
   }
 
+  if (!state.emailVerified) {
+    setFeedback("Business email confirmation must be completed before submission.", "error");
+    return;
+  }
+
   const trapValue = String(onboardingForm.trapField.value || "").trim();
   if (trapValue) {
     setFeedback("Submission blocked.", "error");
@@ -425,19 +538,19 @@ async function submitAgreement(event) {
   const payload = buildSubmissionPayload();
 
   joinBtn.disabled = true;
-  setFeedback("Submitting to the sheet...", "");
+  setFeedback("Submitting signed agreement...", "");
 
   try {
-    const result = await jsonpRequest("submitLead", payload, 30000);
+    const result = await jsonpRequest("submitAgreement", payload, 30000);
 
     if (!result.ok) {
-      throw new Error(result.message || "Unable to submit form.");
+      throw new Error(result.message || "Unable to submit agreement.");
     }
 
     setFeedback("", "");
     showSuccess(result);
   } catch (error) {
-    setFeedback(error.message || "Unable to submit form at this time.", "error");
+    setFeedback(error.message || "Unable to submit agreement at this time.", "error");
   } finally {
     joinBtn.disabled = false;
   }
@@ -445,16 +558,40 @@ async function submitAgreement(event) {
 
 function buildSubmissionPayload() {
   const email = String(onboardingForm.businessEmail.value || "").trim().toLowerCase();
+  const website = String(onboardingForm.website.value || "").trim();
   const maxDiscount = getMaxDiscountAmount();
 
   return {
+    sessionId: state.verificationSessionId,
+    agreementVersion: AGREEMENT_VERSION,
     businessName: String(onboardingForm.businessName.value || "").trim(),
+    businessAddress: String(onboardingForm.businessAddress.value || "").trim(),
+    city: String(onboardingForm.city.value || "").trim(),
+    state: String(onboardingForm.state.value || "").trim().toUpperCase(),
     zipCode: String(onboardingForm.zipCode.value || "").trim(),
     businessPhone: String(onboardingForm.businessPhone.value || "").trim(),
     businessEmail: email,
+    website,
+    businessCategory: String(onboardingForm.businessCategory.value || "").trim(),
     ownerName: String(onboardingForm.ownerName.value || "").trim(),
+    jobTitle: String(onboardingForm.jobTitle.value || "").trim(),
+    signerRole: String(onboardingForm.signerRole.value || "").trim(),
+    authorityBasis: String(onboardingForm.authorityBasis.value || "").trim(),
     notes: String(onboardingForm.notes.value || "").trim(),
     maxDiscount,
+    offerDetails: buildOfferDetails(maxDiscount),
+    offerRestrictions: buildOfferRestrictions(maxDiscount),
+    signatureName: String(onboardingForm.ownerName.value || "").trim(),
+    signatureDate: String(onboardingForm.signatureDate.value || "").trim(),
+    drawnSignature: serializeSignatureData(),
+    drawnSignaturePresent: state.signatureStrokes.length > 0,
+    consentAuthority: onboardingForm.certifyAuthority.checked,
+    consentAgreement: onboardingForm.agreeTerms.checked,
+    consentLegalBinding: onboardingForm.legalBinding.checked,
+    consentESign: onboardingForm.eSignConsent.checked,
+    consentPerjury: onboardingForm.penaltyPerjury.checked,
+    consentSignatureEffect: onboardingForm.signatureEffectConsent.checked,
+    consentCountersignature: onboardingForm.signatureEffectConsent.checked,
     formStartedAt: String(onboardingForm.formStartedAt ? onboardingForm.formStartedAt.value : ""),
     submittedAt: new Date().toISOString(),
     ipAddress: state.telemetry.ipAddress,
@@ -463,8 +600,8 @@ function buildSubmissionPayload() {
     operatingSystem: getOperatingSystem(),
     deviceInfo: getDeviceInfo(),
     approxLocation: buildApproxLocation(),
-    emailVerificationStatus: false,
-    phoneVerificationStatus: false,
+    emailVerificationStatus: state.emailVerified,
+    phoneVerificationStatus: state.phoneVerified,
     emailDomainStatus: "NOT_CHECKED"
   };
 }
@@ -476,10 +613,17 @@ function showSuccess(result) {
   successPanel.classList.remove("is-hidden");
   successPanel.setAttribute("aria-hidden", "false");
 
-  const submissionId = String(result.submissionId || result.agreementId || "");
-  agreementNumberLabel.textContent = submissionId
-    ? `Submission ID: ${submissionId}`
-    : "Submission received";
+  const agreementId = String(result.agreementId || "");
+  agreementNumberLabel.textContent = agreementId
+    ? `Agreement Number: ${agreementId}`
+    : "Agreement Number generated";
+
+  if (result.pdfUrl) {
+    downloadPdfBtn.href = result.pdfUrl;
+    downloadPdfBtn.classList.remove("is-hidden");
+  } else {
+    downloadPdfBtn.classList.add("is-hidden");
+  }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -491,12 +635,17 @@ function resetFormFlow() {
 
   onboardingForm.reset();
   onboardingForm.formStartedAt.value = String(Date.now());
+  onboardingForm.signatureDate.value = new Date().toISOString().slice(0, 10);
+  onboardingForm.state.value = "NY";
+  onboardingForm.zipCode.dataset.resolvedZip = "";
 
   state.step = 1;
+  state.agreementReachedBottom = false;
   state.verificationSessionId = "";
   state.emailVerified = false;
   state.phoneVerified = false;
 
+  clearSignature();
   if (emailCodeInput) {
     emailCodeInput.value = "";
   }
@@ -632,7 +781,7 @@ function updateAuthoritySummary() {
   }
 
   const signerName = String(onboardingForm.ownerName.value || "").trim();
-  const signerTitle = String(onboardingForm.jobTitle?.value || "Contact").trim();
+  const signerTitle = String(onboardingForm.jobTitle.value || "").trim();
   const businessName = String(onboardingForm.businessName.value || "").trim();
   const businessPhone = String(onboardingForm.businessPhone.value || "").trim();
   const businessEmail = String(onboardingForm.businessEmail.value || "").trim();
