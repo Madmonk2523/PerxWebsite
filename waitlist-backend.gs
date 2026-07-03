@@ -226,154 +226,177 @@ function verifyCode_(payload) {
 }
 
 function submitAgreement_(payload) {
-  const submission = normalizeSubmissionPayload_(payload);
-
-  const validationMessage = validateSubmission_(submission);
-  if (validationMessage) {
-    return { ok: false, message: validationMessage, errorCode: 'VALIDATION_ERROR' };
-  }
-
-  if (!passesRateLimit_(submission.ipAddress)) {
-    return {
-      ok: false,
-      message: 'Too many submissions from this source. Please wait and try again.',
-      errorCode: 'RATE_LIMITED'
-    };
-  }
-
-  const verification = getSubmissionSession_(submission);
-  if (!verification.ok) {
-    return verification;
-  }
-
-  const existingDupes = detectDuplicateSubmission_(submission);
-  const fraudFlags = computeFraudFlags_(submission, verification.session, existingDupes);
-
-  const agreementId = nextAgreementId_();
-  const now = new Date();
-  const status = 'Pending Approval';
-
-  let pdfResult = { file: null, url: '' };
-  const processingNotes = [];
-
   try {
-    pdfResult = generateAgreementPdf_(submission, verification.session, agreementId, now);
-  } catch (error) {
-    const message = 'PDF generation failed: ' + getErrorMessage_(error);
-    processingNotes.push(message);
-    tryLogAudit_('PDF_GENERATION_FAILED', {
-      agreementId,
-      businessName: submission.businessName,
-      message,
-      stack: getErrorStack_(error)
-    });
-  }
+    const submission = normalizeSubmissionPayload_(payload);
 
-  const pdfUrl = pdfResult.url || '';
-
-  const rowData = buildSubmissionRow_(submission, verification.session, {
-    agreementId,
-    status,
-    submittedAt: now,
-    fraudFlags,
-    pdfUrl,
-    publicBusinessMatchStatus: simulateBusinessMatch_(submission),
-    ownershipVerified: 'Pending Review',
-    internalTags: processingNotes.join(' | ')
-  });
-
-  const sheet = getOrCreateSubmissionSheet_();
-  let submissionRow = 0;
-
-  try {
-    sheet.appendRow(rowData);
-    submissionRow = sheet.getLastRow();
-  } catch (error) {
-    try {
-      submissionRow = sheet.getLastRow() + 1;
-      sheet.getRange(submissionRow, 1, 1, rowData.length).setValues([rowData]);
-    } catch (fallbackError) {
-      throw fallbackError;
+    const validationMessage = validateSubmission_(submission);
+    if (validationMessage) {
+      return { ok: false, message: validationMessage, errorCode: 'VALIDATION_ERROR' };
     }
-  }
 
-  try {
-    appendSimpleResultRow_(submission, agreementId, status, now);
-  } catch (error) {
-    tryLogAudit_('SIMPLE_RESULTS_WRITE_FAILED', {
-      agreementId,
-      message: getErrorMessage_(error),
-      stack: getErrorStack_(error)
-    });
-  }
+    if (!passesRateLimit_(submission.ipAddress)) {
+      return {
+        ok: false,
+        message: 'Too many submissions from this source. Please wait and try again.',
+        errorCode: 'RATE_LIMITED'
+      };
+    }
 
-  try {
-    formatSubmissionSheet_(sheet);
-  } catch (error) {
-    tryLogAudit_('SUBMISSION_SHEET_FORMATTING_FAILED', {
-      agreementId,
-      message: getErrorMessage_(error),
-      stack: getErrorStack_(error)
-    });
-  }
+    const agreementId = nextAgreementId_();
+    const now = new Date();
+    const status = 'Pending Approval';
 
-  try {
-    sendBusinessConfirmation_(submission, agreementId, pdfResult.file);
-  } catch (error) {
-    const message = 'Business confirmation email failed: ' + getErrorMessage_(error);
-    processingNotes.push(message);
-    tryLogAudit_('BUSINESS_CONFIRMATION_EMAIL_FAILED', {
-      agreementId,
-      businessEmail: submission.businessEmail,
-      message,
-      stack: getErrorStack_(error)
-    });
-  }
+    const verification = getSubmissionSession_(submission);
+    if (!verification.ok) {
+      try {
+        appendSimpleResultRow_(submission, agreementId, 'Verification blocked', now);
+      } catch (error) {
+        tryLogAudit_('SIMPLE_RESULTS_WRITE_FAILED', {
+          agreementId,
+          message: getErrorMessage_(error),
+          stack: getErrorStack_(error)
+        });
+      }
 
-  try {
-    sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, pdfUrl);
-  } catch (error) {
-    const message = 'Admin notification email failed: ' + getErrorMessage_(error);
-    processingNotes.push(message);
-    tryLogAudit_('ADMIN_NOTIFICATION_EMAIL_FAILED', {
-      agreementId,
-      adminEmail: ADMIN_EMAIL,
-      message,
-      stack: getErrorStack_(error)
-    });
-  }
+      return verification;
+    }
 
-  if (processingNotes.length) {
+    const existingDupes = detectDuplicateSubmission_(submission);
+    const fraudFlags = computeFraudFlags_(submission, verification.session, existingDupes);
+
+    let pdfResult = { file: null, url: '' };
+    const processingNotes = [];
+
     try {
-      sheet.getRange(submissionRow, 41).setValue(processingNotes.join(' | '));
+      pdfResult = generateAgreementPdf_(submission, verification.session, agreementId, now);
     } catch (error) {
-      tryLogAudit_('PROCESSING_NOTES_UPDATE_FAILED', {
+      const message = 'PDF generation failed: ' + getErrorMessage_(error);
+      processingNotes.push(message);
+      tryLogAudit_('PDF_GENERATION_FAILED', {
+        agreementId,
+        businessName: submission.businessName,
+        message,
+        stack: getErrorStack_(error)
+      });
+    }
+
+    const pdfUrl = pdfResult.url || '';
+
+    const rowData = buildSubmissionRow_(submission, verification.session, {
+      agreementId,
+      status,
+      submittedAt: now,
+      fraudFlags,
+      pdfUrl,
+      publicBusinessMatchStatus: simulateBusinessMatch_(submission),
+      ownershipVerified: 'Pending Review',
+      internalTags: processingNotes.join(' | ')
+    });
+
+    const sheet = getOrCreateSubmissionSheet_();
+    let submissionRow = 0;
+
+    try {
+      sheet.appendRow(rowData);
+      submissionRow = sheet.getLastRow();
+    } catch (error) {
+      try {
+        submissionRow = sheet.getLastRow() + 1;
+        sheet.getRange(submissionRow, 1, 1, rowData.length).setValues([rowData]);
+      } catch (fallbackError) {
+        throw fallbackError;
+      }
+    }
+
+    try {
+      appendSimpleResultRow_(submission, agreementId, status, now);
+    } catch (error) {
+      tryLogAudit_('SIMPLE_RESULTS_WRITE_FAILED', {
         agreementId,
         message: getErrorMessage_(error),
         stack: getErrorStack_(error)
       });
     }
+
+    try {
+      formatSubmissionSheet_(sheet);
+    } catch (error) {
+      tryLogAudit_('SUBMISSION_SHEET_FORMATTING_FAILED', {
+        agreementId,
+        message: getErrorMessage_(error),
+        stack: getErrorStack_(error)
+      });
+    }
+
+    try {
+      sendBusinessConfirmation_(submission, agreementId, pdfResult.file);
+    } catch (error) {
+      const message = 'Business confirmation email failed: ' + getErrorMessage_(error);
+      processingNotes.push(message);
+      tryLogAudit_('BUSINESS_CONFIRMATION_EMAIL_FAILED', {
+        agreementId,
+        businessEmail: submission.businessEmail,
+        message,
+        stack: getErrorStack_(error)
+      });
+    }
+
+    try {
+      sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, pdfUrl);
+    } catch (error) {
+      const message = 'Admin notification email failed: ' + getErrorMessage_(error);
+      processingNotes.push(message);
+      tryLogAudit_('ADMIN_NOTIFICATION_EMAIL_FAILED', {
+        agreementId,
+        adminEmail: ADMIN_EMAIL,
+        message,
+        stack: getErrorStack_(error)
+      });
+    }
+
+    if (processingNotes.length) {
+      try {
+        sheet.getRange(submissionRow, 41).setValue(processingNotes.join(' | '));
+      } catch (error) {
+        tryLogAudit_('PROCESSING_NOTES_UPDATE_FAILED', {
+          agreementId,
+          message: getErrorMessage_(error),
+          stack: getErrorStack_(error)
+        });
+      }
+    }
+
+    tryLogAudit_('AGREEMENT_SUBMITTED', {
+      agreementId,
+      businessName: submission.businessName,
+      businessEmail: submission.businessEmail,
+      status,
+      fraudFlags: fraudFlags.join('|'),
+      processingNotes: processingNotes.join('|')
+    });
+
+    return {
+      ok: true,
+      message: processingNotes.length
+        ? 'Agreement submitted successfully. PERX received it and will finish processing the file during review.'
+        : 'Agreement submitted successfully. Pending admin review.',
+      agreementId,
+      pdfUrl,
+      approvalStatus: status,
+      fraudFlags
+    };
+  } catch (error) {
+    tryLogAudit_('SUBMIT_AGREEMENT_FATAL', {
+      message: getErrorMessage_(error),
+      stack: getErrorStack_(error)
+    });
+
+    return {
+      ok: false,
+      message: 'Submission failed while saving the agreement. The spreadsheet may still have a partial record. Please try again.',
+      errorCode: 'SERVER_ERROR'
+    };
   }
-
-  tryLogAudit_('AGREEMENT_SUBMITTED', {
-    agreementId,
-    businessName: submission.businessName,
-    businessEmail: submission.businessEmail,
-    status,
-    fraudFlags: fraudFlags.join('|'),
-    processingNotes: processingNotes.join('|')
-  });
-
-  return {
-    ok: true,
-    message: processingNotes.length
-      ? 'Agreement submitted successfully. PERX received it and will finish processing the file during review.'
-      : 'Agreement submitted successfully. Pending admin review.',
-    agreementId,
-    pdfUrl,
-    approvalStatus: status,
-    fraudFlags
-  };
 }
 
 function adminDecision_(payload, status) {
