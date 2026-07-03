@@ -1,6 +1,7 @@
 const SPREADSHEET_ID = '19M0jKEKPFIeIeI5NIVIryoYY-cfuCF0CgqXEAfgrlrs';
 const SUBMISSIONS_SHEET_NAME = 'PERX Submissions';
-const SIMPLE_RESULTS_SHEET_NAME = 'PERX Simple Results';
+const SIMPLE_RESULTS_SHEET_NAME = 'PERX';
+const LEGACY_SIMPLE_RESULTS_SHEET_NAME = 'PERX Simple Results';
 const VERIFICATIONS_SHEET_NAME = 'PERX Verifications';
 const AUDIT_SHEET_NAME = 'PERX Audit Log';
 const SETTINGS_SHEET_NAME = 'PERX Settings';
@@ -1314,14 +1315,11 @@ function appendSimpleResultRow_(submission, agreementId, status, submittedAt) {
   const sheet = getOrCreateSimpleResultsSheet_();
   sheet.appendRow([
     formatIso_(submittedAt),
-    agreementId,
     submission.businessName,
     submission.ownerName,
     submission.businessEmail,
     submission.businessPhone,
-    submission.zipCode,
     submission.maxDiscount,
-    cleanText_(submission.notes),
     status
   ]);
 }
@@ -1331,24 +1329,28 @@ function getOrCreateSimpleResultsSheet_() {
   let sheet = spreadsheet.getSheetByName(SIMPLE_RESULTS_SHEET_NAME);
 
   if (!sheet) {
-    sheet = spreadsheet.insertSheet(SIMPLE_RESULTS_SHEET_NAME);
+    const legacySheet = spreadsheet.getSheetByName(LEGACY_SIMPLE_RESULTS_SHEET_NAME);
+    if (legacySheet) {
+      legacySheet.setName(SIMPLE_RESULTS_SHEET_NAME);
+      sheet = legacySheet;
+    } else {
+      sheet = spreadsheet.insertSheet(SIMPLE_RESULTS_SHEET_NAME);
+    }
   }
 
   const headers = [[
     'submittedAt',
-    'agreementId',
     'businessName',
     'contactName',
     'businessEmail',
     'businessPhone',
-    'zipCode',
     'maxDiscount',
-    'notes',
     'status'
   ]];
 
   ensureHeaders_(sheet, headers, headers[0].length);
   formatSimpleResultsSheet_(sheet);
+  hideSupportSheets_(spreadsheet, sheet);
   return sheet;
 }
 
@@ -1377,15 +1379,12 @@ function formatSimpleResultsSheet_(sheet) {
   }
 
   sheet.setColumnWidth(1, 160);
-  sheet.setColumnWidth(2, 120);
-  sheet.setColumnWidth(3, 220);
-  sheet.setColumnWidth(4, 180);
-  sheet.setColumnWidth(5, 220);
-  sheet.setColumnWidth(6, 150);
-  sheet.setColumnWidth(7, 95);
-  sheet.setColumnWidth(8, 110);
-  sheet.setColumnWidth(9, 260);
-  sheet.setColumnWidth(10, 130);
+  sheet.setColumnWidth(2, 220);
+  sheet.setColumnWidth(3, 180);
+  sheet.setColumnWidth(4, 220);
+  sheet.setColumnWidth(5, 150);
+  sheet.setColumnWidth(6, 110);
+  sheet.setColumnWidth(7, 120);
 }
 
 function getOrCreateVerificationSheet_() {
@@ -1455,6 +1454,28 @@ function authorizeOnce_() {
   const doc = DocumentApp.create('PERX authorization test');
   const file = DriveApp.getFileById(doc.getId());
   file.setTrashed(true);
+}
+
+function hideSupportSheets_(spreadsheet, visibleSheet) {
+  const supportSheets = [
+    SUBMISSIONS_SHEET_NAME,
+    LEGACY_SIMPLE_RESULTS_SHEET_NAME,
+    VERIFICATIONS_SHEET_NAME,
+    AUDIT_SHEET_NAME,
+    SETTINGS_SHEET_NAME
+  ];
+
+  supportSheets.forEach(function (sheetName) {
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (sheet && sheet !== visibleSheet) {
+      sheet.hideSheet();
+    }
+  });
+
+  if (visibleSheet) {
+    visibleSheet.showSheet();
+    spreadsheet.setActiveSheet(visibleSheet);
+  }
 }
 
 function ensureHeaders_(sheet, headers, expectedColumns) {
