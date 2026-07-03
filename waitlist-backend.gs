@@ -729,7 +729,7 @@ function generateAgreementPdf_(submission, session, agreementId, submittedAt) {
   body.appendParagraph('Agreement Version: ' + submission.agreementVersion);
   body.appendParagraph('Submission Timestamp: ' + formatIso_(submittedAt));
   body.appendParagraph('Effective Date: This Agreement becomes effective when the Business\'s authorized representative electronically signs and submits it to PERX. PERX\'s receipt of the signed submission constitutes acceptance, and no separate PERX signature is required.');
-  body.appendParagraph('Launch Date: The date PERX Rewards is first made publicly available for download and use by the general public.');
+  body.appendParagraph('Launch Date: The date PERX Rewards is first made publicly available for download and use by the general public, which will occur only after at least 1,000 users have preordered the app.');
 
   body.appendParagraph('');
   body.appendParagraph('Business Information').setHeading(DocumentApp.ParagraphHeading.HEADING2);
@@ -762,11 +762,11 @@ function generateAgreementPdf_(submission, session, agreementId, submittedAt) {
 
   body.appendParagraph('');
   body.appendParagraph('2. Agreed Offer').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business authorizes PERX to select a discount amount up to the maximum submitted by the Business and to set an appropriate minimum purchase requirement. A discount pass becomes available when an eligible customer enters and passes through the Business\'s PERX proximity circle. After a customer claims a discount, that customer\'s eligibility resets after 24 hours. The Business agrees to honor the final offer published by PERX beginning on the Launch Date.');
+  body.appendParagraph('The Business authorizes PERX to select a discount amount up to the maximum submitted by the Business and to set an appropriate minimum purchase requirement. A discount pass becomes available when an eligible customer enters and passes through the Business\'s PERX proximity circle. After a customer claims a discount, that customer\'s eligibility resets after 24 hours. The Business agrees to honor the final offer published by PERX beginning on the Launch Date. Launch will not occur until at least 1,000 users have preordered the app.');
 
   body.appendParagraph('');
   body.appendParagraph('3. Participation Term').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. The Business\'s participation begins on the Launch Date. The Business agrees to remain an active participant on PERX and honor the agreed offer for twelve (12) months beginning on the Launch Date. After the initial 12-month period, this Agreement automatically renews month-to-month unless either party provides at least 30 days written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date.');
+  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. The Business\'s participation begins on the Launch Date. The Business agrees to remain an active participant on PERX and honor the agreed offer for twelve (12) months beginning on the Launch Date. After the initial 12-month period, this Agreement automatically renews month-to-month unless either party provides at least 30 days written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date. Launch is expected only after at least 1,000 users have preordered the app.');
 
   body.appendParagraph('');
   body.appendParagraph('4. Business Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
