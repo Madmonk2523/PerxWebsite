@@ -1,4 +1,4 @@
-const BACKEND_ENDPOINT = "https://script.google.com/macros/s/AKfycbyo7MV2-LY30MXYoUAD8MXxvWTnDL2znOMQILgMaf-8aitzUWb4E1yAFIl4yh7j_jA/exec";
+const BACKEND_ENDPOINT = "https://script.google.com/macros/s/AKfycbySAM5YBcN2rvAtJ1hKaWFh0yI-cEtzkqTTWr99SpWY-jzi7Q2d-d8-Kl9F43ST6lZv/exec";
 const AGREEMENT_VERSION = "2026.07.01-r6";
 
 const state = {
