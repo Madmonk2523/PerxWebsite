@@ -73,6 +73,26 @@ body {
   padding: 1.2rem;
 }
 
+.contact-email-banner {
+  width: min(100%, 56rem);
+  margin: 0 0 0.8rem;
+  padding: 0.58rem 0.82rem;
+  border: 1px solid rgba(15, 111, 255, 0.28);
+  border-left: 4px solid #0f6fff;
+  border-radius: 0.82rem;
+  background: rgba(15, 111, 255, 0.1);
+  color: #123c73;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.contact-email-banner a {
+  color: #0f4ea8;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
 .panel {
   width: min(100%, 56rem);
   border: 1px solid var(--stroke);
@@ -745,6 +765,12 @@ button:disabled {
   .panel {
     border-radius: 1.1rem;
     padding: 1rem 0.88rem;
+  }
+
+  .contact-email-banner {
+    font-size: 0.84rem;
+    padding: 0.52rem 0.66rem;
+    margin-bottom: 0.7rem;
   }
 
   .lead {
