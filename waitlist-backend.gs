@@ -19,6 +19,7 @@ const ACTIONS = {
   START_VERIFICATION: 'startVerification',
   VERIFY_CODE: 'verifyCode',
   SUBMIT_AGREEMENT: 'submitAgreement',
+  SUBMIT_LEAD: 'submitLead',
   ADMIN_APPROVE: 'adminApprove',
   ADMIN_REJECT: 'adminReject',
   ADMIN_REQUEST_INFO: 'adminRequestInfo'
@@ -91,6 +92,8 @@ function routeAction_(action, payload) {
       return verifyCode_(payload);
     case ACTIONS.SUBMIT_AGREEMENT:
       return submitAgreement_(payload);
+    case ACTIONS.SUBMIT_LEAD:
+      return submitLead_(payload);
     case ACTIONS.ADMIN_APPROVE:
       return adminDecision_(payload, 'Approved');
     case ACTIONS.ADMIN_REJECT:
@@ -365,6 +368,67 @@ function submitAgreement_(payload) {
   };
 }
 
+function submitLead_(payload) {
+  const submission = normalizeLeadSubmissionPayload_(payload);
+
+  const validationMessage = validateLeadSubmission_(submission);
+  if (validationMessage) {
+    return { ok: false, message: validationMessage, errorCode: 'VALIDATION_ERROR' };
+  }
+
+  if (!passesRateLimit_(submission.ipAddress)) {
+    return {
+      ok: false,
+      message: 'Too many submissions from this source. Please wait and try again.',
+      errorCode: 'RATE_LIMITED'
+    };
+  }
+
+  const leadId = nextLeadId_();
+  const now = new Date();
+
+  const rowData = buildSubmissionRow_(submission, { sessionId: '' }, {
+    agreementId: leadId,
+    status: 'New Lead',
+    submittedAt: now,
+    fraudFlags: ['Simple intake form'],
+    pdfUrl: '',
+    publicBusinessMatchStatus: 'Not Checked',
+    ownershipVerified: 'Not Checked',
+    internalTags: 'Simple intake form'
+  });
+
+  const sheet = getOrCreateSubmissionSheet_();
+
+  try {
+    sheet.appendRow(rowData);
+  } catch (error) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, 1, rowData.length).setValues([rowData]);
+  }
+
+  try {
+    formatSubmissionSheet_(sheet);
+  } catch (error) {
+    tryLogAudit_('SUBMISSION_SHEET_FORMATTING_FAILED', {
+      agreementId: leadId,
+      message: getErrorMessage_(error),
+      stack: getErrorStack_(error)
+    });
+  }
+
+  logAudit_('LEAD_SUBMITTED', {
+    leadId,
+    businessName: submission.businessName,
+    businessEmail: submission.businessEmail
+  });
+
+  return {
+    ok: true,
+    message: 'Submitted successfully.',
+    submissionId: leadId
+  };
+}
+
 function adminDecision_(payload, status) {
   const agreementId = cleanText_(payload.agreementId);
   const adminNotes = cleanText_(payload.adminNotes);
@@ -457,6 +521,81 @@ function normalizeSubmissionPayload_(payload) {
     phoneVerificationStatus: cleanText_(payload.phoneVerificationStatus) === 'true',
     emailDomainStatus: 'NOT_CHECKED'
   };
+}
+
+function normalizeLeadSubmissionPayload_(payload) {
+  const maxDiscount = normalizeMoney_(payload.maxDiscount);
+  const today = new Date();
+
+  return {
+    sessionId: '',
+    agreementVersion: 'simple-intake-v1',
+    businessName: cleanText_(payload.businessName),
+    businessAddress: '',
+    city: '',
+    state: 'NY',
+    zipCode: cleanText_(payload.zipCode),
+    businessPhone: cleanPhone_(payload.businessPhone),
+    businessEmail: normalizeEmail_(payload.businessEmail),
+    website: '',
+    businessCategory: 'Simple Intake',
+    ownerName: cleanText_(payload.ownerName),
+    jobTitle: 'Contact',
+    signerRole: 'Contact',
+    authorityBasis: 'Simple intake form',
+    notes: cleanText_(payload.notes),
+    maxDiscount,
+    offerDetails: maxDiscount ? buildOfferDetails_(maxDiscount) : '',
+    offerRestrictions: maxDiscount ? buildOfferRestrictions_(maxDiscount) : '',
+    signatureName: cleanText_(payload.ownerName) || cleanText_(payload.businessName),
+    signatureDate: formatIso_(today).slice(0, 10),
+    drawnSignature: '',
+    drawnSignaturePresent: false,
+    consentAuthority: true,
+    consentAgreement: true,
+    consentLegalBinding: true,
+    consentESign: true,
+    consentPerjury: true,
+    consentSignatureEffect: true,
+    formStartedAt: cleanText_(payload.formStartedAt),
+    submittedAt: cleanText_(payload.submittedAt),
+    ipAddress: cleanText_(payload.ipAddress),
+    userAgent: cleanText_(payload.userAgent),
+    browser: cleanText_(payload.browser),
+    operatingSystem: cleanText_(payload.operatingSystem),
+    deviceInfo: cleanText_(payload.deviceInfo),
+    approxLocation: cleanText_(payload.approxLocation),
+    emailVerificationStatus: false,
+    phoneVerificationStatus: false,
+    emailDomainStatus: 'NOT_CHECKED'
+  };
+}
+
+function validateLeadSubmission_(submission) {
+  const required = [
+    submission.businessName,
+    submission.ownerName,
+    submission.businessEmail,
+    submission.businessPhone,
+    submission.zipCode,
+    submission.maxDiscount
+  ];
+
+  for (let index = 0; index < required.length; index += 1) {
+    if (!required[index]) {
+      return 'Please complete the basic business details before submitting.';
+    }
+  }
+
+  if (!isValidEmail_(submission.businessEmail)) {
+    return 'Enter a valid business email address.';
+  }
+
+  if (!/^[0-9]{5}$/.test(submission.zipCode)) {
+    return 'Enter a valid 5-digit New York ZIP code.';
+  }
+
+  return '';
 }
 
 function validateSubmission_(submission) {
