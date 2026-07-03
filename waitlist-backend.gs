@@ -7,6 +7,7 @@ const AUDIT_SHEET_NAME = 'PERX Audit Log';
 const SETTINGS_SHEET_NAME = 'PERX Settings';
 
 const ADMIN_EMAIL = 'chasemallor@gmail.com';
+const ADMIN_BYPASS_EMAIL = 'chasemallor@gmail.com';
 const SUPPORT_EMAIL = 'support@joinperx.com';
 const EMAIL_FROM_NAME = 'PERX';
 
@@ -111,7 +112,6 @@ function startVerification_(payload) {
   const website = cleanText_(payload.website);
   const ownerName = cleanText_(payload.ownerName);
   const ipAddress = cleanText_(payload.ipAddress);
-  const bypassLimits = isAdminBypassEmail_(businessEmail);
 
   if (!businessName || !isValidEmail_(businessEmail) || !businessPhone) {
     return {
@@ -121,7 +121,7 @@ function startVerification_(payload) {
     };
   }
 
-  if (!bypassLimits && !passesRateLimit_(ipAddress)) {
+  if (!passesRateLimit_(ipAddress, businessEmail)) {
     return {
       ok: false,
       message: 'Too many attempts. Please wait a few minutes and try again.',
@@ -233,14 +233,13 @@ function verifyCode_(payload) {
 function submitAgreement_(payload) {
   try {
     const submission = normalizeSubmissionPayload_(payload);
-    const bypassLimits = isAdminBypassEmail_(submission.businessEmail);
 
     const validationMessage = validateSubmission_(submission);
     if (validationMessage) {
       return { ok: false, message: validationMessage, errorCode: 'VALIDATION_ERROR' };
     }
 
-    if (!bypassLimits && !passesRateLimit_(submission.ipAddress)) {
+    if (!passesRateLimit_(submission.ipAddress, submission.businessEmail)) {
       return {
         ok: false,
         message: 'Too many submissions from this source. Please wait and try again.',
@@ -1615,7 +1614,11 @@ function nextAgreementId_() {
   return AGREEMENT_PREFIX + padNumber_(next, 6);
 }
 
-function passesRateLimit_(ipAddress) {
+function passesRateLimit_(ipAddress, email) {
+  if (isAdminBypassEmail_(email)) {
+    return true;
+  }
+
   const ip = cleanText_(ipAddress);
   if (!ip) {
     return true;
@@ -1649,7 +1652,7 @@ function passesRateLimit_(ipAddress) {
 }
 
 function isAdminBypassEmail_(email) {
-  return normalizeEmail_(email) === normalizeEmail_(ADMIN_EMAIL);
+  return normalizeEmail_(email) === normalizeEmail_(ADMIN_BYPASS_EMAIL);
 }
 
 function buildAdminActionUrl_(action, agreementId, businessName) {
