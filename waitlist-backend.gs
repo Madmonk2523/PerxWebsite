@@ -1,5 +1,6 @@
 const SPREADSHEET_ID = '19M0jKEKPFIeIeI5NIVIryoYY-cfuCF0CgqXEAfgrlrs';
 const SUBMISSIONS_SHEET_NAME = 'PERX Submissions';
+const SIMPLE_RESULTS_SHEET_NAME = 'PERX Simple Results';
 const VERIFICATIONS_SHEET_NAME = 'PERX Verifications';
 const AUDIT_SHEET_NAME = 'PERX Audit Log';
 const SETTINGS_SHEET_NAME = 'PERX Settings';
@@ -294,6 +295,16 @@ function submitAgreement_(payload) {
     } catch (fallbackError) {
       throw fallbackError;
     }
+  }
+
+  try {
+    appendSimpleResultRow_(submission, agreementId, status, now);
+  } catch (error) {
+    tryLogAudit_('SIMPLE_RESULTS_WRITE_FAILED', {
+      agreementId,
+      message: getErrorMessage_(error),
+      stack: getErrorStack_(error)
+    });
   }
 
   try {
@@ -1276,6 +1287,84 @@ function getOrCreateSubmissionSheet_() {
   return sheet;
 }
 
+function appendSimpleResultRow_(submission, agreementId, status, submittedAt) {
+  const sheet = getOrCreateSimpleResultsSheet_();
+  sheet.appendRow([
+    formatIso_(submittedAt),
+    agreementId,
+    submission.businessName,
+    submission.ownerName,
+    submission.businessEmail,
+    submission.businessPhone,
+    submission.zipCode,
+    submission.maxDiscount,
+    cleanText_(submission.notes),
+    status
+  ]);
+}
+
+function getOrCreateSimpleResultsSheet_() {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(SIMPLE_RESULTS_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(SIMPLE_RESULTS_SHEET_NAME);
+  }
+
+  const headers = [[
+    'submittedAt',
+    'agreementId',
+    'businessName',
+    'contactName',
+    'businessEmail',
+    'businessPhone',
+    'zipCode',
+    'maxDiscount',
+    'notes',
+    'status'
+  ]];
+
+  ensureHeaders_(sheet, headers, headers[0].length);
+  formatSimpleResultsSheet_(sheet);
+  return sheet;
+}
+
+function formatSimpleResultsSheet_(sheet) {
+  const lastColumn = sheet.getLastColumn();
+  if (lastColumn < 1) {
+    return;
+  }
+
+  sheet.setFrozenRows(1);
+  sheet.clearBandings();
+  sheet.getRange(1, 1, 1, lastColumn)
+    .setFontWeight('bold')
+    .setBackground('#10233f')
+    .setFontColor('#ffffff')
+    .setVerticalAlignment('middle');
+
+  if (!sheet.getFilter()) {
+    sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 1), lastColumn).createFilter();
+  }
+
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn)
+      .setVerticalAlignment('middle')
+      .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+  }
+
+  sheet.setColumnWidth(1, 160);
+  sheet.setColumnWidth(2, 120);
+  sheet.setColumnWidth(3, 220);
+  sheet.setColumnWidth(4, 180);
+  sheet.setColumnWidth(5, 220);
+  sheet.setColumnWidth(6, 150);
+  sheet.setColumnWidth(7, 95);
+  sheet.setColumnWidth(8, 110);
+  sheet.setColumnWidth(9, 260);
+  sheet.setColumnWidth(10, 130);
+}
+
 function getOrCreateVerificationSheet_() {
   const spreadsheet = getSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(VERIFICATIONS_SHEET_NAME);
@@ -1334,6 +1423,7 @@ function authorizeOnce() {
 
 function authorizeOnce_() {
   getOrCreateSubmissionSheet_();
+  getOrCreateSimpleResultsSheet_();
   getOrCreateVerificationSheet_();
   getOrCreateAuditSheet_();
 
