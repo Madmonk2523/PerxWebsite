@@ -111,6 +111,7 @@ function startVerification_(payload) {
   const website = cleanText_(payload.website);
   const ownerName = cleanText_(payload.ownerName);
   const ipAddress = cleanText_(payload.ipAddress);
+  const bypassLimits = isAdminBypassEmail_(businessEmail);
 
   if (!businessName || !isValidEmail_(businessEmail) || !businessPhone) {
     return {
@@ -120,7 +121,7 @@ function startVerification_(payload) {
     };
   }
 
-  if (!passesRateLimit_(ipAddress)) {
+  if (!bypassLimits && !passesRateLimit_(ipAddress)) {
     return {
       ok: false,
       message: 'Too many attempts. Please wait a few minutes and try again.',
@@ -194,9 +195,12 @@ function verifyCode_(payload) {
     return { ok: false, message: 'Verification session not found.', errorCode: 'SESSION_NOT_FOUND' };
   }
 
+  const rowValues = rowMatch.sheet.getRange(rowMatch.row, 1, 1, 23).getValues()[0];
+  const bypassLimits = isAdminBypassEmail_(rowValues[4]);
+
   const sheet = rowMatch.sheet;
   const row = rowMatch.row;
-  const values = sheet.getRange(row, 1, 1, 22).getValues()[0];
+  const values = rowValues;
 
   const expiresAt = parseDate_(values[2]);
   if (expiresAt && expiresAt.getTime() < Date.now()) {
@@ -206,7 +210,7 @@ function verifyCode_(payload) {
   let emailAttempts = Number(values[19] || 0);
   emailAttempts += 1;
 
-  if (emailAttempts > MAX_CODE_ATTEMPTS) {
+  if (!bypassLimits && emailAttempts > MAX_CODE_ATTEMPTS) {
     return { ok: false, message: 'Too many email verification attempts.', errorCode: 'TOO_MANY_ATTEMPTS' };
   }
 
@@ -229,13 +233,14 @@ function verifyCode_(payload) {
 function submitAgreement_(payload) {
   try {
     const submission = normalizeSubmissionPayload_(payload);
+    const bypassLimits = isAdminBypassEmail_(submission.businessEmail);
 
     const validationMessage = validateSubmission_(submission);
     if (validationMessage) {
       return { ok: false, message: validationMessage, errorCode: 'VALIDATION_ERROR' };
     }
 
-    if (!passesRateLimit_(submission.ipAddress)) {
+    if (!bypassLimits && !passesRateLimit_(submission.ipAddress)) {
       return {
         ok: false,
         message: 'Too many submissions from this source. Please wait and try again.',
@@ -1641,6 +1646,10 @@ function passesRateLimit_(ipAddress) {
   });
 
   return count < SUBMISSION_RATE_LIMIT;
+}
+
+function isAdminBypassEmail_(email) {
+  return normalizeEmail_(email) === normalizeEmail_(ADMIN_EMAIL);
 }
 
 function buildAdminActionUrl_(action, agreementId, businessName) {
