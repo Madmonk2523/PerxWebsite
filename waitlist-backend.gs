@@ -391,14 +391,42 @@ function submitAgreement_(payload) {
       fraudFlags
     };
   } catch (error) {
+    const fallbackId = AGREEMENT_PREFIX + 'FALLBACK-' + String(Date.now());
+    let fallbackSaved = false;
+
+    try {
+      const fallbackSubmission = normalizeSubmissionPayload_(payload || {});
+      appendSimpleResultRow_(fallbackSubmission, fallbackId, 'Fallback Saved', new Date());
+      fallbackSaved = true;
+    } catch (fallbackError) {
+      tryLogAudit_('SUBMIT_AGREEMENT_FALLBACK_WRITE_FAILED', {
+        fallbackId,
+        message: getErrorMessage_(fallbackError),
+        stack: getErrorStack_(fallbackError)
+      });
+    }
+
     tryLogAudit_('SUBMIT_AGREEMENT_FATAL', {
+      fallbackId,
+      fallbackSaved,
       message: getErrorMessage_(error),
       stack: getErrorStack_(error)
     });
 
+    if (fallbackSaved) {
+      return {
+        ok: true,
+        message: 'Agreement submitted in backup mode. PERX will review and process it manually.',
+        agreementId: fallbackId,
+        pdfUrl: '',
+        approvalStatus: 'Pending Approval',
+        fraudFlags: ['Fallback path']
+      };
+    }
+
     return {
       ok: false,
-      message: 'Submission failed while saving the agreement. The spreadsheet may still have a partial record. Please try again.',
+      message: 'Submission failed while saving the agreement and fallback capture failed. Please try again.',
       errorCode: 'SERVER_ERROR'
     };
   }
