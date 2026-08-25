@@ -1,4 +1,4 @@
-const BACKEND_ENDPOINT = "https://script.google.com/macros/s/AKfycbyX1iojcTrGjTfD9Xp9xpwji25hzke3pv8fhR74UtBD-mGitop_XfO6VtTyInnPahwz/exec";
+const BACKEND_ENDPOINT = "https://script.google.com/macros/s/AKfycbyz6Jrfm9GawXUQw9aK1qhFViHb8qLblWyefY2tmwb5xZ29ITXsMyg60sBCTJ3s44uC/exec";
 
 const state = {
   submitting: false,
