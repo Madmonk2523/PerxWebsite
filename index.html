@@ -3,586 +3,278 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Join PERX | Official Business Signup Portal</title>
+    <title>Join PERX | Free Pilot Business Signup</title>
     <meta
       name="description"
-      content="Official PERX business onboarding portal. Sign the participation agreement electronically and submit in minutes."
+      content="Bring new local customers through your door. Join the PERX pilot in about a minute."
     />
     <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#f5f7fb" />
+    <meta name="theme-color" content="#f4f6f8" />
     <link rel="canonical" href="https://joinperx.com/" />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://joinperx.com/" />
-    <meta property="og:title" content="Join PERX | Official Business Signup Portal" />
+    <meta property="og:title" content="Join PERX | Free Pilot Business Signup" />
     <meta
       property="og:description"
-      content="Complete PERX business onboarding online with electronic signature."
+      content="Join the PERX pilot, add your offer, verify your email, and go pending review in minutes."
     />
 
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="Join PERX | Official Business Signup Portal" />
+    <meta property="twitter:title" content="Join PERX | Free Pilot Business Signup" />
     <meta
       property="twitter:description"
-      content="Complete PERX business onboarding online with electronic signature."
+      content="Join the PERX pilot, add your offer, verify your email, and go pending review in minutes."
     />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://script.google.com" />
-    <link rel="dns-prefetch" href="https://api.ipify.org" />
-    <link rel="dns-prefetch" href="https://ipapi.co" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260702-2" />
+    <link rel="stylesheet" href="styles.css?v=20260825-1" />
   </head>
   <body>
-    <div class="bg-grid" aria-hidden="true"></div>
-    <div class="halo halo-a" aria-hidden="true"></div>
-    <div class="halo halo-b" aria-hidden="true"></div>
+    <div class="glow glow-a" aria-hidden="true"></div>
+    <div class="glow glow-b" aria-hidden="true"></div>
 
-    <main class="shell">
-      <p class="contact-email-banner" role="note">
-        Contact Email:
-        <a href="mailto:chasemallor@gmail.com">chasemallor@gmail.com</a>
-      </p>
-      <section class="panel hero-panel" id="landingPanel" aria-labelledby="heroTitle">
-        <p class="eyebrow">Official PERX Partner Onboarding</p>
-        <h1 id="heroTitle">Join PERX</h1>
-        <p class="lead">
-          Become a PERX partner and attract new customers by offering exclusive rewards to our
-          community.
+    <header class="topbar">
+      <a class="logo" href="#top" aria-label="PERX home">PERX</a>
+      <nav class="topnav" aria-label="Primary">
+        <a href="#how-it-works">How It Works</a>
+        <a href="#faq">FAQ</a>
+        <button type="button" id="joinHeaderBtn" class="btn btn-primary">Join PERX</button>
+      </nav>
+    </header>
+
+    <main id="top" class="page">
+      <section class="hero" aria-labelledby="heroTitle">
+        <p class="eyebrow">PERX Pilot</p>
+        <h1 id="heroTitle">Bring new local customers through your door.</h1>
+        <p class="hero-copy">
+          PERX helps people discover great local businesses through exclusive rewards. Join the
+          PERX pilot and create an offer that gives new customers a reason to visit.
         </p>
-        <p class="pricing-disclosure" role="note">
-          <strong>Pricing:</strong> $50/month after PERX launches. Launch will only happen once at
-          least 1,000 users have preordered the app. 12-month initial commitment.
-        </p>
-        <p class="support-copy">Joining only takes a few minutes.</p>
-        <button type="button" id="startOnboardingBtn" class="primary">Become a PERX Partner</button>
-        <p class="subtle-link-row">
-          Need policy details first?
-          <a href="privacy-policy.html">Review Privacy Policy</a>
-        </p>
+        <p class="hero-trust">Free during the pilot · No credit card required</p>
+        <button type="button" id="joinHeroBtn" class="btn btn-primary btn-large">Join PERX</button>
       </section>
 
-      <section class="panel wizard-panel is-hidden" id="wizardPanel" aria-hidden="true">
-        <header class="wizard-header">
-          <p class="eyebrow">Business Onboarding</p>
-          <h2>Official Business Participation Signup</h2>
-          <p class="step-counter" id="stepCounter">Step 1 of 5</p>
-          <div class="progress-track" aria-hidden="true">
-            <span id="progressFill"></span>
-          </div>
-        </header>
+      <section id="how-it-works" class="how" aria-labelledby="howTitle">
+        <h2 id="howTitle">How PERX works</h2>
+        <div class="how-grid">
+          <article>
+            <p class="step-no">1</p>
+            <h3>Join</h3>
+            <p>Tell us about your business.</p>
+          </article>
+          <article>
+            <p class="step-no">2</p>
+            <h3>Choose your PERX</h3>
+            <p>Choose the reward you'd like customers to receive.</p>
+          </article>
+          <article>
+            <p class="step-no">3</p>
+            <h3>Go live</h3>
+            <p>Verify your email and PERX will review your business before it goes live.</p>
+          </article>
+        </div>
+      </section>
 
-        <form id="onboardingForm" novalidate>
-          <input type="hidden" id="formStartedAt" name="formStartedAt" value="" />
-          <input type="hidden" id="trapField" name="trapField" value="" />
+      <section id="join-form" class="form-wrap" aria-labelledby="joinTitle">
+        <div class="panel" id="signupPanel">
+          <h2 id="joinTitle">Join PERX</h2>
+          <p class="panel-subhead">It takes about a minute.</p>
 
-          <section class="step" data-step="1">
-            <p class="pricing-disclosure step-pricing-disclosure" role="note">
-              <strong>Pricing:</strong> $50/month after PERX launches. Launch will only happen once
-              at least 1,000 users have preordered the app. 12-month initial commitment.
-            </p>
-            <p class="support-copy">
-              Launch is gated until at least 1,000 users have preordered the app.
-            </p>
-            <h3>Business Information</h3>
-            <div class="field-grid two-col">
+          <form id="pilotSignupForm" novalidate>
+            <input type="hidden" name="trapField" value="" />
+
+            <div class="fields two-col">
               <label>
                 Business Name
-                <input type="text" name="businessName" required autocomplete="organization" />
-              </label>
-              <label>
-                Business Phone Number
-                <input type="tel" name="businessPhone" required autocomplete="tel" />
-              </label>
-            </div>
-            <div class="field-grid one-col">
-              <label>
-                Business Address
-                <input type="text" name="businessAddress" required autocomplete="street-address" />
-              </label>
-            </div>
-            <input type="hidden" name="city" value="" />
-            <input type="hidden" name="state" value="NY" />
-            <div class="zip-field-row">
-              <label class="zip-input-label">
-                New York ZIP Code
                 <input
                   type="text"
-                  name="zipCode"
+                  name="businessName"
                   required
-                  inputmode="numeric"
-                  pattern="[0-9]{5}"
-                  maxlength="5"
-                  autocomplete="postal-code"
-                  placeholder="10001"
+                  autocomplete="organization"
+                  placeholder="Joe's Pizza"
                 />
-              </label>
-              <div class="zip-location" id="zipLocationStatus" role="status" aria-live="polite">
-                <span class="zip-location-label">City and state</span>
-                <strong>Enter a 5-digit New York ZIP code</strong>
-              </div>
-            </div>
-            <div class="field-grid two-col">
-              <label>
-                Business Email Address
-                <input type="email" name="businessEmail" required autocomplete="email" />
-              </label>
-              <label>
-                Website (Optional)
-                <input type="url" name="website" placeholder="https://yourbusiness.com" autocomplete="url" />
-              </label>
-            </div>
-            <div class="field-grid two-col">
-              <label>
-                Business Category
-                <select name="businessCategory" required>
-                  <option value="">Select a category</option>
-                  <optgroup label="Food &amp; Drink">
-                    <option>Bakery</option>
-                    <option>Bar or Pub</option>
-                    <option>Cafe or Coffee Shop</option>
-                    <option>Catering</option>
-                    <option>Deli or Sandwich Shop</option>
-                    <option>Dessert or Ice Cream Shop</option>
-                    <option>Fast Casual Restaurant</option>
-                    <option>Food Truck</option>
-                    <option>Grocery or Specialty Food</option>
-                    <option>Restaurant</option>
-                  </optgroup>
-                  <optgroup label="Retail">
-                    <option>Apparel and Accessories</option>
-                    <option>Automotive Retail</option>
-                    <option>Books, Music, and Gifts</option>
-                    <option>Convenience Store</option>
-                    <option>Electronics</option>
-                    <option>Florist</option>
-                    <option>Furniture and Home Goods</option>
-                    <option>Health and Beauty Retail</option>
-                    <option>Jewelry</option>
-                    <option>Pet Store</option>
-                    <option>Sporting Goods</option>
-                    <option>Specialty Retail</option>
-                  </optgroup>
-                  <optgroup label="Health, Beauty &amp; Fitness">
-                    <option>Barber Shop</option>
-                    <option>Beauty Salon</option>
-                    <option>Dental Practice</option>
-                    <option>Fitness Studio</option>
-                    <option>Gym</option>
-                    <option>Health or Wellness Practice</option>
-                    <option>Massage or Spa</option>
-                    <option>Nail Salon</option>
-                    <option>Optical or Eye Care</option>
-                    <option>Physical Therapy</option>
-                    <option>Yoga or Pilates Studio</option>
-                  </optgroup>
-                  <optgroup label="Services">
-                    <option>Auto Repair or Service</option>
-                    <option>Child Care</option>
-                    <option>Cleaning Service</option>
-                    <option>Education or Tutoring</option>
-                    <option>Financial Services</option>
-                    <option>Home Services</option>
-                    <option>Laundry or Dry Cleaning</option>
-                    <option>Legal Services</option>
-                    <option>Pet Care or Grooming</option>
-                    <option>Photography</option>
-                    <option>Professional Services</option>
-                    <option>Real Estate</option>
-                    <option>Technology Services</option>
-                  </optgroup>
-                  <optgroup label="Entertainment &amp; Hospitality">
-                    <option>Arts or Entertainment</option>
-                    <option>Event Venue</option>
-                    <option>Hotel or Lodging</option>
-                    <option>Museum or Attraction</option>
-                    <option>Recreation</option>
-                    <option>Sports Venue</option>
-                    <option>Travel or Tourism</option>
-                  </optgroup>
-                  <option>Other</option>
-                </select>
-              </label>
-              <label>
-                Owner / Authorized Representative Full Name
-                <input type="text" name="ownerName" required autocomplete="name" />
-              </label>
-            </div>
-            <div class="field-grid one-col">
-              <label>
-                Job Title
-                <input type="text" name="jobTitle" required autocomplete="organization-title" />
-              </label>
-            </div>
-          </section>
-
-          <section class="step is-hidden" data-step="2" aria-hidden="true">
-            <h3>Your PERX Offer</h3>
-            <p class="step-intro">
-              Set the most your business is comfortable offering. The PERX Rewards Team will
-              choose the final discount and minimum purchase for each pass.
-            </p>
-
-            <div class="offer-process" aria-label="How a PERX offer works">
-              <div class="offer-process-step">
-                <span>1</span>
-                <strong>Customer enters your proximity circle</strong>
-              </div>
-              <div class="offer-process-step">
-                <span>2</span>
-                <strong>A PERX discount pass becomes available</strong>
-              </div>
-              <div class="offer-process-step">
-                <span>3</span>
-                <strong>Customer claims and uses the discount</strong>
-              </div>
-              <div class="offer-process-step">
-                <span>4</span>
-                <strong>Claim eligibility resets after 24 hours</strong>
-              </div>
-            </div>
-
-            <div class="offer-controls">
-              <label>
-                Maximum Amount Off
-                <span class="field-help">
-                  The most you are comfortable giving off on a single qualifying transaction.
-                  This is a ceiling, not something that applies every time someone passes by.
-                </span>
-                <span class="money-input">
-                  <span aria-hidden="true">$</span>
-                  <input
-                    type="number"
-                    name="maxDiscount"
-                    required
-                    min="0.01"
-                    step="0.01"
-                    inputmode="decimal"
-                  />
-                </span>
+                <span class="field-error" data-error-for="businessName"></span>
               </label>
 
-              <div class="perx-decision-note">
-                <strong>PERX sets the final offer</strong>
-                <p>
-                  We will choose an appropriate discount for a qualifying proximity pass and the
-                  minimum purchase required to use it. This does not mean a discount is given
-                  every time someone passes by, and it will never exceed your maximum above.
-                </p>
-              </div>
-            </div>
-
-            <label class="offer-notes-label">
-              Notes or Requests for the PERX Team (Optional)
-              <span class="field-help">
-                Share margins, exclusions, preferred minimum spend, or anything else we should
-                consider when setting your offer.
-              </span>
-              <textarea
-                name="notes"
-                rows="4"
-                placeholder="Example: Please exclude catering orders and gift cards."
-              ></textarea>
-            </label>
-          </section>
-
-          <section class="step is-hidden" data-step="3" aria-hidden="true">
-            <h3>Verify the Signer</h3>
-            <p class="step-intro">
-              Review who is signing, identify their authority, and confirm the business email.
-            </p>
-
-            <div class="authority-summary">
-              <div>
-                <span>Signer</span>
-                <strong id="authoritySignerName">Authorized representative</strong>
-                <small id="authoritySignerTitle">Job title</small>
-              </div>
-              <div>
-                <span>Signing for</span>
-                <strong id="authorityBusinessName">Business name</strong>
-                <small id="authorityPhonePreview">Business phone</small>
-              </div>
-            </div>
-
-            <div class="field-grid two-col">
               <label>
-                Role at the Business
-                <select name="signerRole" id="signerRole" required>
+                Your Name
+                <input type="text" name="contactName" required autocomplete="name" />
+                <span class="field-error" data-error-for="contactName"></span>
+              </label>
+            </div>
+
+            <div class="fields one-col">
+              <label>
+                Business Address
+                <input
+                  type="text"
+                  name="businessAddress"
+                  required
+                  autocomplete="street-address"
+                  placeholder="123 Main St, Brooklyn, NY"
+                />
+                <span class="field-error" data-error-for="businessAddress"></span>
+              </label>
+            </div>
+
+            <div class="fields two-col">
+              <label>
+                Your Role
+                <select name="contactRole" required>
                   <option value="">Select your role</option>
-                  <option value="Owner or Co-owner">Owner or Co-owner</option>
-                  <option value="Corporate Officer or Executive">Corporate Officer or Executive</option>
-                  <option value="General Manager">General Manager</option>
-                  <option value="Authorized Manager or Employee">Authorized Manager or Employee</option>
-                  <option value="Authorized External Representative">Authorized External Representative</option>
+                  <option value="Owner">Owner</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Other Authorized Representative">Other Authorized Representative</option>
                 </select>
+                <span class="field-error" data-error-for="contactRole"></span>
               </label>
+
               <label>
-                Authority to Sign
-                <select name="authorityBasis" id="authorityBasis" required>
-                  <option value="">Select the source of your authority</option>
-                  <option value="Ownership of the business">Ownership of the business</option>
-                  <option value="Authority inherent in officer or executive role">
-                    Authority inherent in officer or executive role
-                  </option>
-                  <option value="Written authorization from owner or officer">
-                    Written authorization from owner or officer
-                  </option>
-                  <option value="Standing authority under company policy or operating agreement">
-                    Standing authority under company policy or operating agreement
-                  </option>
-                  <option value="Power of attorney or other documented authority">
-                    Power of attorney or other documented authority
-                  </option>
-                </select>
+                Phone Number
+                <input
+                  type="tel"
+                  name="phone"
+                  required
+                  autocomplete="tel"
+                  inputmode="tel"
+                  placeholder="(555) 123-4567"
+                />
+                <span class="field-error" data-error-for="phone"></span>
               </label>
             </div>
 
-            <div class="email-verification">
-              <div class="verification-heading">
-                <div>
-                  <span>Business email</span>
-                  <strong id="authorityEmailPreview">Email address</strong>
-                </div>
-                <p id="emailVerifyStatus" class="status-pill neutral">Not confirmed</p>
-              </div>
-              <div class="verification-controls">
-                <button type="button" class="secondary" id="sendCodesBtn">Send Code</button>
-                <label class="verification-code-field">
-                  6-digit code
-                  <input
-                    type="text"
-                    id="emailCode"
-                    maxlength="6"
-                    inputmode="numeric"
-                    autocomplete="one-time-code"
-                    placeholder="000000"
-                  />
-                </label>
-                <button type="button" class="secondary" id="verifyEmailBtn">Verify Email</button>
-              </div>
-            </div>
-
-            <div class="authority-review-note">
-              <span id="phoneVerifyStatus" class="status-pill neutral">Phone review pending</span>
-              PERX may contact the business phone above if authority needs to be confirmed before
-              approval.
-            </div>
-          </section>
-
-          <section class="step is-hidden" data-step="4" aria-hidden="true">
-            <h3>Business Participation Agreement</h3>
-            <p class="step-intro">Please read this agreement carefully before joining PERX.</p>
-
-            <div class="agreement-box" id="agreementBox">
-              <article>
-                <h4>PERX Rewards Business Participation Agreement</h4>
-                <p>
-                  Effective Date: This Agreement becomes effective when the Business's authorized
-                  representative electronically signs and submits it to PERX. PERX's receipt of the
-                  signed submission constitutes acceptance, and no separate PERX signature is
-                  required. For this Agreement, the Launch Date means the date PERX Rewards is first
-                  made publicly available for download and use by the general public, which will
-                  occur only after at least 1,000 users have preordered the app.
-                </p>
-                <p>
-                  This Business Participation Agreement ("Agreement") is entered into between PERX
-                  Rewards ("PERX") and the Business identified in this onboarding form. By signing
-                  this Agreement, the person signing on behalf of the Business represents that they
-                  are authorized to enter into this Agreement on the Business's behalf.
-                </p>
-                <p>
-                  Business Information: the Business name, address, representative name, title,
-                  phone, and email are the values submitted in this onboarding form.
-                </p>
-                <p>
-                  1. Participation: The Business agrees to participate in PERX Rewards and
-                  authorizes PERX to list and promote the Business through the PERX mobile
-                  application, website, social media, printed materials, and other promotional
-                  channels.
-                </p>
-                <p>
-                  2. Agreed Offer: The Business authorizes PERX to select a discount amount up to
-                  the maximum submitted by the Business and to set an appropriate minimum purchase
-                  requirement. A discount pass becomes available when an eligible customer enters
-                  and passes through the Business's PERX proximity circle. After a customer claims
-                  a discount, that customer's eligibility resets after 24 hours. PERX has sole and
-                  absolute discretion to determine the final offer terms, provided the discount
-                  does not exceed the maximum submitted by the Business. The Business agrees to
-                  honor the final offer published by PERX beginning on the Launch Date.
-                </p>
-                <p>
-                  3. Participation Term: This Agreement is fully executed when the Business's
-                  authorized representative electronically signs and submits it. The Business's
-                  participation begins on the Launch Date. The initial term begins on the Launch
-                  Date and continues through the end of the twelve (12) consecutive paid months
-                  described in Section 3.1 ("Initial Term"). The Business agrees to remain an active
-                  participant on PERX and honor the agreed offer throughout the Initial Term. After
-                  the Initial Term, this Agreement automatically renews month-to-month unless either
-                  party provides at least 30 days' written notice. If PERX has not publicly launched
-                  within 12 months after this Agreement is signed, either party may cancel this
-                  Agreement by written notice before the Launch Date. Launch is expected only after
-                  at least 1,000 users have preordered the app.
-                </p>
-                <p>
-                  3.1 Fees and Payment: The Business agrees to pay PERX a participation fee of
-                  fifty dollars ($50.00) per month for no fewer than twelve (12) consecutive paid
-                  months beginning on the Launch Date. The first payment is due on the Launch Date,
-                  and each subsequent payment is due monthly in advance. The minimum payment
-                  commitment is twelve (12) payments totaling six hundred dollars ($600.00).
-                  Ending participation before all twelve payments have been made does not eliminate
-                  the Business's obligation to pay the unpaid balance of this minimum commitment
-                  unless PERX agrees otherwise in writing. After the Initial Term, the $50.00
-                  monthly fee continues during any month-to-month renewal until this Agreement is
-                  ended under Section 6.
-                </p>
-                <p>
-                  4. Business Responsibilities: The Business agrees to honor the agreed offer,
-                  maintain accurate business information, notify PERX if its contact information or
-                  offer changes, and comply with applicable laws. The Business grants PERX
-                  a non-exclusive, royalty-free, worldwide right and license to use any and all of
-                  the Business's name, logo, address, website, business hours, photographs approved
-                  by the Business, business description, and social media handles solely to promote
-                  the Business through PERX. The Business confirms it has the authority and rights
-                  needed to grant these rights.
-                </p>
-                <p>
-                  5. PERX Responsibilities: PERX agrees to operate its platform in good faith and
-                  make reasonable efforts to maintain accurate Business information. PERX does not
-                  guarantee customer traffic, sales, revenue, or profits whatsoever.
-                </p>
-                <p>
-                  6. Ending This Agreement: The Business may end this Agreement before the end of
-                  the initial 12-month term only if the Business permanently closes or PERX agrees
-                  in writing. Any notice of termination by the Business must be signed by the
-                  Business owner or an authorized representative with proof of authority upon PERX
-                  request. PERX may immediately remove the Business from the platform if the
-                  Business repeatedly refuses to honor the agreed offer, provides false information,
-                  engages in fraudulent or illegal activity, materially breaches this Agreement, or
-                  in any way harms the business reputation of PERX. Ending participation or removal
-                  from the platform does not waive the Business's minimum payment commitment under
-                  Section 3.1 unless PERX agrees otherwise in writing.
-                </p>
-                <p>
-                  7. Responsibility: Each party is responsible for its own actions. The Business is
-                  responsible for its products, services, pricing, refunds, taxes, customer service,
-                  and compliance with applicable law. PERX is not responsible for disputes between
-                  the Business and its customers.
-                </p>
-                <p>
-                  8. General Terms: This Agreement is governed by the laws of the State of New
-                  York. This Agreement contains the complete agreement between PERX and the
-                  Business regarding participation in PERX Rewards. Any changes to this Agreement
-                  must be agreed to in writing by both parties. If any part of this Agreement is
-                  found to be invalid or unenforceable, the remaining provisions shall remain in
-                  full force and effect.
-                </p>
-                <p>
-                  9. Electronic Execution: This Agreement is fully executed when the Business's
-                  authorized representative electronically signs and submits it. No separate PERX
-                  signature is required. Business activation remains subject to PERX approval, and
-                  launch will not occur until at least 1,000 users have preordered the app.
-                </p>
-                <p>
-                  10. Limitation of Liability: In no event shall PERX's liability under this
-                  Agreement exceed the total amount paid by the Business to PERX during the
-                  twelve (12) months of this Agreement.
-                </p>
-                <p>
-                  11. Waiver of Jury Trial: Each party hereby waives any and all rights it may have
-                  to a jury trial in connection with any dispute arising out of or relating to this
-                  Agreement and/or the business relationship between the Business and PERX.
-                </p>
-                <p class="agreement-end">End of Agreement</p>
-              </article>
-            </div>
-
-            <p id="agreementScrollStatus" class="status-pill warning">Scroll to the bottom to continue</p>
-
-            <label class="checkbox-row">
-              <input type="checkbox" name="certifyAuthority" required />
-              I certify that I am the owner of this business or am authorized to enter into agreements on behalf of this business.
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" name="agreeTerms" required />
-              I have read and agree to the PERX Business Participation Agreement.
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" name="legalBinding" required />
-              I understand this agreement is legally binding.
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" name="eSignConsent" required />
-              I agree that my electronic signature has the same legal effect as my handwritten signature and that I can access, download, and retain the electronic agreement.
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" name="penaltyPerjury" required />
-              I certify under penalty of perjury that I am the owner of this business or have authority to enter into legally binding agreements on behalf of this business.
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" name="signatureEffectConsent" required />
-              I understand this Agreement becomes binding when I electronically sign and submit it, while business activation remains subject to PERX approval.
-            </label>
-          </section>
-
-          <section class="step is-hidden" data-step="5" aria-hidden="true">
-            <h3>Electronic Signature</h3>
-            <div class="signature-summary">
-              <span>Signing as</span>
-              <strong id="signatureNamePreview">Authorized representative</strong>
-            </div>
-            <div class="field-grid one-col signature-date-field">
+            <div class="fields one-col">
               <label>
-                Current Date
-                <input type="date" name="signatureDate" required />
+                Email
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  autocomplete="email"
+                  inputmode="email"
+                  placeholder="name@business.com"
+                />
+                <span class="field-error" data-error-for="email"></span>
               </label>
             </div>
 
-            <label class="signature-label">Optional Drawn Signature</label>
-            <canvas id="signaturePad" width="800" height="220" aria-label="Draw signature"></canvas>
-            <div class="signature-actions">
-              <button type="button" class="secondary" id="clearSignatureBtn">Clear Signature</button>
+            <div class="fields one-col">
+              <label>
+                What would you like to offer PERX customers?
+                <input
+                  type="text"
+                  name="perxOffer"
+                  required
+                  placeholder="Free cookie with any coffee"
+                />
+                <span class="field-error" data-error-for="perxOffer"></span>
+              </label>
+              <p class="offer-examples">
+                Examples: 15% off your first visit · $5 off $25 · Free appetizer with entree
+              </p>
             </div>
 
-            <p class="meta-note">
-              We automatically record timestamp, IP address, browser, operating system, device
-              information, user agent, approximate location, and agreement version.
+            <div class="fields one-col">
+              <label>
+                Any restrictions?
+                <input
+                  type="text"
+                  name="restrictions"
+                  placeholder="Monday-Thursday only, one per customer"
+                />
+                <span class="field-error" data-error-for="restrictions"></span>
+              </label>
+            </div>
+
+            <label class="confirm-box">
+              <input type="checkbox" name="authorizationConfirmed" required />
+              <span>
+                I confirm that I am authorized to enroll this business in PERX and that the
+                business agrees to honor the PERX offer above while participating in the pilot.
+              </span>
+            </label>
+            <span class="field-error" data-error-for="authorizationConfirmed"></span>
+
+            <p class="confirm-note">
+              Participation is currently free. No credit card is required. You can contact PERX to
+              request changes or pause participation.
             </p>
-          </section>
+            <p class="legal-links">
+              <a href="privacy-policy.html">Privacy Policy</a>
+            </p>
 
-          <footer class="wizard-actions">
-            <button type="button" class="secondary" id="backBtn">Back</button>
-            <button type="button" class="secondary" id="nextBtn">Continue</button>
-            <button type="submit" class="primary is-hidden" id="joinBtn">Join PERX</button>
-          </footer>
+            <button type="submit" class="btn btn-primary btn-large" id="submitBtn">Join PERX</button>
+            <p id="formFeedback" class="form-feedback" aria-live="polite"></p>
+          </form>
+        </div>
 
-          <p id="formFeedback" class="form-feedback" aria-live="polite"></p>
-        </form>
+        <div class="panel is-hidden" id="checkEmailPanel" aria-hidden="true">
+          <h2>Check your email</h2>
+          <p id="checkEmailCopy">
+            We sent a verification link to your email. Click the link to confirm your business
+            signup.
+          </p>
+
+          <div class="email-actions">
+            <button type="button" class="btn btn-secondary" id="resendEmailBtn">Didn't get it? Resend email</button>
+            <button type="button" class="btn btn-secondary" id="editEmailBtn">Entered the wrong email? Edit email</button>
+          </div>
+
+          <form id="editEmailForm" class="is-hidden" aria-hidden="true">
+            <label>
+              Update business email
+              <input type="email" id="newEmailInput" autocomplete="email" placeholder="name@business.com" />
+            </label>
+            <div class="email-actions">
+              <button type="submit" class="btn btn-primary">Save and resend</button>
+              <button type="button" class="btn btn-secondary" id="cancelEditEmailBtn">Cancel</button>
+            </div>
+          </form>
+
+          <p id="checkEmailFeedback" class="form-feedback" aria-live="polite"></p>
+        </div>
+
+        <div class="panel is-hidden" id="verifiedPanel" aria-hidden="true">
+          <h2>You're in.</h2>
+          <p id="verifiedBusinessCopy">Your business has been submitted to PERX.</p>
+          <p class="status-line">Status: Pending Review</p>
+          <p>
+            We'll review your business and PERX offer before making it live. We'll contact you if
+            we need anything else.
+          </p>
+
+          <div class="offer-card">
+            <h3>Your PERX</h3>
+            <p id="verifiedOffer"></p>
+            <p id="verifiedRestrictions" class="is-hidden"></p>
+          </div>
+        </div>
       </section>
 
-      <section class="panel success-panel is-hidden" id="successPanel" aria-hidden="true">
-        <p class="eyebrow">Submission Complete</p>
-        <h2>Welcome to PERX!</h2>
-        <p>
-          Thank you for applying to become a PERX partner. We've received your signed Business
-          Participation Agreement.
-        </p>
-        <p>PERX will review the business for activation. You will receive an email update.</p>
-        <p id="agreementNumberLabel" class="agreement-number"></p>
-        <div class="success-actions">
-          <button type="button" class="secondary" id="returnHomeBtn">Return Home</button>
-          <a id="downloadPdfBtn" class="primary link-button" href="#" target="_blank" rel="noopener">
-            Download Signed Agreement
-          </a>
-        </div>
+      <section id="faq" class="faq" aria-labelledby="faqTitle">
+        <h2 id="faqTitle">FAQ</h2>
+        <details>
+          <summary>How much does it cost?</summary>
+          <p>PERX business participation is free during the pilot. No credit card is required.</p>
+        </details>
+        <details>
+          <summary>How long does signup take?</summary>
+          <p>Most businesses finish in 1-2 minutes plus one click to verify email.</p>
+        </details>
+        <details>
+          <summary>When do we go live?</summary>
+          <p>After email verification, your business is pending review. PERX approves before go-live.</p>
+        </details>
       </section>
     </main>
 
-    <script src="script.js?v=20260701-5"></script>
+    <script src="script.js?v=20260825-1"></script>
   </body>
 </html>
