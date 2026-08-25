@@ -873,7 +873,6 @@ function getAdminSecret_() {
   return secret;
 }
 
-function appendSubmissionObject_(sheet, rowObject) {
 function appendSubmissionObject_(rowObject) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -888,7 +887,6 @@ function appendSubmissionObject_(rowObject) {
 }
 
 
-function findPilotSubmissionRow_(submissionId) {
 function findPilotSubmissionRow_(submissionId) {
   const store = loadPilotStore_();
   const key = cleanText_(submissionId);
@@ -905,7 +903,6 @@ function findPilotSubmissionRow_(submissionId) {
 
 
 function updateSubmissionFields_(found, updates) {
-function updateSubmissionFields_(found, updates) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -920,7 +917,6 @@ function updateSubmissionFields_(found, updates) {
 }
 
 
-function listPilotRows_() {
 function listPilotRows_() {
   const store = loadPilotStore_();
   const rows = [];
