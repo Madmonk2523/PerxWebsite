@@ -369,6 +369,9 @@ function verifyEmailToken_(payload) {
       message: 'Your email has already been verified.',
       alreadyVerified: true,
       businessName: row.businessName,
+      rewardPerPass: row.rewardPerPass || row.reward_per_pass || '',
+      maximumPerx: row.maximumPerx || row.maximum_perx || '',
+      minimumPurchase: row.minimumPurchase || row.minimum_purchase || '',
       perxOffer: row.perxOffer || row.offerDetails,
       restrictions: row.restrictions || row.offerRestrictions,
       status: row.pilotStatus || 'PENDING'
@@ -393,6 +396,9 @@ function verifyEmailToken_(payload) {
       message: 'Your email has already been verified.',
       alreadyVerified: true,
       businessName: row.businessName,
+      rewardPerPass: row.rewardPerPass || row.reward_per_pass || '',
+      maximumPerx: row.maximumPerx || row.maximum_perx || '',
+      minimumPurchase: row.minimumPurchase || row.minimum_purchase || '',
       perxOffer: row.perxOffer || row.offerDetails,
       restrictions: row.restrictions || row.offerRestrictions,
       status: row.pilotStatus || 'PENDING'
@@ -444,6 +450,9 @@ function verifyEmailToken_(payload) {
     ok: true,
     message: 'Verification successful.',
     businessName: refreshed.businessName,
+    rewardPerPass: refreshed.rewardPerPass || refreshed.reward_per_pass || '',
+    maximumPerx: refreshed.maximumPerx || refreshed.maximum_perx || '',
+    minimumPurchase: refreshed.minimumPurchase || refreshed.minimum_purchase || '',
     perxOffer: refreshed.perxOffer || refreshed.offerDetails,
     restrictions: refreshed.restrictions || refreshed.offerRestrictions,
     status: 'PENDING'
@@ -554,6 +563,13 @@ function getPilotAdminCounts_() {
 }
 
 function normalizePilotSubmission_(payload) {
+  const rewardPerPass = cleanText_(payload.rewardPerPass || payload.reward_per_pass || payload.perxReward || payload.perx_reward || payload.reward || '');
+  const maximumPerx = cleanText_(payload.maximumPerx || payload.maximum_perx || payload.maximumReward || payload.maximum_reward || '');
+  const minimumPurchase = cleanText_(payload.minimumPurchase || payload.minimum_purchase || '');
+  const restrictions = cleanText_(payload.restrictions || payload.otherRestrictions || payload.other_restrictions || '');
+  const legacyOffer = cleanText_(payload.perxOffer || payload.offerDetails || payload.offer_details || '');
+  const derivedOffer = buildStructuredPerxOfferText_(rewardPerPass, maximumPerx, minimumPurchase);
+
   return {
     submissionId: '',
     businessName: cleanText_(payload.businessName),
@@ -562,13 +578,38 @@ function normalizePilotSubmission_(payload) {
     contactRole: cleanText_(payload.contactRole),
     phone: cleanPhone_(payload.phone),
     email: normalizeEmail_(payload.email),
-    perxOffer: cleanText_(payload.perxOffer),
-    restrictions: cleanText_(payload.restrictions),
+    rewardPerPass: rewardPerPass,
+    maximumPerx: maximumPerx,
+    minimumPurchase: minimumPurchase,
+    perxOffer: legacyOffer || derivedOffer,
+    restrictions: restrictions,
     authorizationConfirmed: asBoolean_(payload.authorizationConfirmed),
     ipAddress: cleanText_(payload.ipAddress),
     userAgent: cleanText_(payload.userAgent),
     source: cleanText_(payload.source) || 'joinperx.com'
   };
+}
+
+function buildStructuredPerxOfferText_(rewardPerPass, maximumPerx, minimumPurchase) {
+  const reward = cleanText_(rewardPerPass);
+  const maximum = cleanText_(maximumPerx);
+  const minimum = cleanText_(minimumPurchase);
+
+  if (!reward && !maximum && !minimum) {
+    return '';
+  }
+
+  const pieces = [];
+  if (reward) {
+    pieces.push(reward + ' per pass');
+  }
+  if (maximum) {
+    pieces.push('maximum ' + maximum);
+  }
+  if (minimum) {
+    pieces.push('minimum purchase ' + minimum);
+  }
+  return pieces.join(' • ');
 }
 
 function validatePilotSubmission_(submission) {
@@ -588,8 +629,12 @@ function validatePilotSubmission_(submission) {
     return 'A valid email is required.';
   }
 
-  if (!submission.perxOffer) {
-    return 'Please enter your PERX offer.';
+  if (!submission.rewardPerPass && !submission.perxOffer) {
+    return 'Please choose how much PERX grows by.';
+  }
+
+  if (!submission.maximumPerx && !submission.perxOffer) {
+    return 'Please set the maximum PERX.';
   }
 
   if (!submission.authorizationConfirmed) {
@@ -657,6 +702,9 @@ function buildPilotSubmissionRow_(submission, context) {
     contactRole: submission.contactRole,
     phone: submission.phone,
     email: submission.email,
+    rewardPerPass: submission.rewardPerPass,
+    maximumPerx: submission.maximumPerx,
+    minimumPurchase: submission.minimumPurchase,
     perxOffer: submission.perxOffer,
     restrictions: submission.restrictions,
     emailVerified: 'false',
@@ -723,6 +771,12 @@ function sendAdminPilotReviewEmail_(row) {
   const pauseUrl = buildAdminActionUrl_(ACTIONS.ADMIN_PAUSE, submissionId);
   const archiveUrl = buildAdminActionUrl_(ACTIONS.ADMIN_ARCHIVE, submissionId);
 
+  const rewardPerPass = cleanText_(row.rewardPerPass || row.reward_per_pass || '');
+  const maximumPerx = cleanText_(row.maximumPerx || row.maximum_perx || '');
+  const minimumPurchase = cleanText_(row.minimumPurchase || row.minimum_purchase || '');
+  const restrictions = cleanText_(row.restrictions || row.offerRestrictions || '');
+  const maxCost = maximumPerx || cleanText_(row.perxOffer || row.offerDetails || '').match(/maximum\s*(\$?\d+(?:\.\d{2})?)/i)?.[1] || 'N/A';
+
   const htmlBody =
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
     '<h2 style="margin:0 0 12px;">PERX business pending review</h2>' +
@@ -732,8 +786,11 @@ function sendAdminPilotReviewEmail_(row) {
     '<p><strong>Phone:</strong> ' + escapeHtml_(row.phone || row.businessPhone) + '</p>' +
     '<p><strong>Email:</strong> ' + escapeHtml_(row.email || row.businessEmail) + '</p>' +
     '<p><strong>Email verified:</strong> Yes</p>' +
-    '<p><strong>Submitted PERX:</strong> ' + escapeHtml_(row.perxOffer || row.offerDetails) + '</p>' +
-    '<p><strong>Restrictions:</strong> ' + escapeHtml_(row.restrictions || row.offerRestrictions || 'None') + '</p>' +
+    '<p><strong>PERX grows by:</strong> ' + escapeHtml_(rewardPerPass || (row.perxOffer || row.offerDetails) || 'Not provided') + '</p>' +
+    '<p><strong>Maximum PERX:</strong> ' + escapeHtml_(maximumPerx || 'Not provided') + '</p>' +
+    '<p><strong>Minimum purchase:</strong> ' + escapeHtml_(minimumPurchase || 'None') + '</p>' +
+    '<p><strong>Maximum cost to business per redemption:</strong> ' + escapeHtml_(maxCost) + '</p>' +
+    '<p><strong>Other restrictions:</strong> ' + escapeHtml_(restrictions || 'None') + '</p>' +
     '<p><strong>Submission date:</strong> ' + escapeHtml_(cleanText_(row.submittedAtPilot || row.createdAt)) + '</p>' +
     '<p><strong>Verification date:</strong> ' + escapeHtml_(cleanText_(row.emailVerifiedAt)) + '</p>' +
     '<p><strong>Status:</strong> Pending Review</p>' +

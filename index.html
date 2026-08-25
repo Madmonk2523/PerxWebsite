@@ -304,19 +304,17 @@
 
             <div class="fields two-col">
               <label>
-                Reward per pass
+                PERX grows by
                 <select name="rewardPerPass" id="rewardPerPass" required>
-                  <option value="$0.10">$0.10</option>
                   <option value="$0.25" selected>$0.25</option>
                   <option value="$0.50">$0.50</option>
                   <option value="$1.00">$1.00</option>
-                  <option value="Custom">Custom</option>
                 </select>
                 <span class="field-error" data-error-for="rewardPerPass"></span>
               </label>
 
               <label>
-                Maximum reward
+                Maximum PERX
                 <input
                   type="text"
                   name="maximumReward"
@@ -330,36 +328,55 @@
               </label>
             </div>
 
+            <div class="fields one-col">
+              <label>
+                Minimum purchase to redeem (optional)
+                <input
+                  type="text"
+                  name="minimumPurchase"
+                  id="minimumPurchase"
+                  inputmode="decimal"
+                  placeholder="$8.00"
+                />
+                <span class="field-error" data-error-for="minimumPurchase"></span>
+              </label>
+              <p class="field-helper">Leave blank if there is no minimum purchase.</p>
+            </div>
+
             <div class="perx-example" aria-live="polite">
-              <p class="example-label">Example</p>
+              <p class="example-label">How your PERX works</p>
               <div class="example-line">
                 <span>25¢</span>
                 <span>50¢</span>
                 <span>75¢</span>
                 <span class="highlight">$1.00</span>
               </div>
-              <p id="liveOfferExample">25¢ per pass · $1 maximum</p>
-              <p class="example-note">Customer can redeem up to $1 off.</p>
+              <p id="liveOfferExample">25¢ → 50¢ → 75¢ → $1.00</p>
+              <p class="example-note"><strong>Maximum PERX:</strong> <span id="summaryMaximum">$1.00</span></p>
+              <p class="example-note"><strong>Minimum purchase:</strong> <span id="summaryMinimum">None</span></p>
+              <p class="example-note"><strong>Maximum cost to your business per redemption:</strong> <span id="summaryMaximumCost">$1.00</span></p>
             </div>
 
             <div class="fields one-col">
               <label>
-                Restrictions (optional)
+                Other restrictions (optional)
                 <input
                   type="text"
                   name="restrictions"
-                  placeholder="Example: $5 minimum purchase"
+                  placeholder="Example: One redemption per visit"
                 />
                 <span class="field-error" data-error-for="restrictions"></span>
               </label>
-              <p class="field-helper">Add any conditions customers should know before redeeming.</p>
+              <p class="field-helper">Leave blank if there are no additional restrictions.</p>
             </div>
 
             <div class="offer-summary" id="offerSummary" aria-live="polite">
               <div class="summary-label">Your PERX</div>
               <h3 id="summaryBusinessName">Your business</h3>
-              <p><strong id="summaryReward">25¢ per pass</strong></p>
-              <p><strong>Maximum reward:</strong> <span id="summaryMaximum">$1.00</span></p>
+              <p><strong id="summaryReward">$0.25 per pass</strong></p>
+              <p><strong>Maximum PERX:</strong> <span id="summaryMaximumText">$1.00</span></p>
+              <p><strong>Minimum purchase:</strong> <span id="summaryMinimumText">None</span></p>
+              <p><strong>Maximum cost to your business per redemption:</strong> <span id="summaryMaximumCostText">$1.00</span></p>
               <p id="summaryRestrictions">Restrictions: None</p>
             </div>
 

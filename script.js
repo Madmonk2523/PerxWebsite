@@ -33,7 +33,11 @@ const minimumPurchaseField = document.getElementById("minimumPurchase");
 const summaryBusinessName = document.getElementById("summaryBusinessName");
 const summaryBusinessNamePreview = document.getElementById("summaryBusinessNamePreview");
 const summaryMaximum = document.getElementById("summaryMaximum");
+const summaryMaximumText = document.getElementById("summaryMaximumText");
 const summaryMinimum = document.getElementById("summaryMinimum");
+const summaryMinimumText = document.getElementById("summaryMinimumText");
+const summaryMaximumCost = document.getElementById("summaryMaximumCost");
+const summaryMaximumCostText = document.getElementById("summaryMaximumCostText");
 const summaryRestrictions = document.getElementById("summaryRestrictions");
 const liveOfferExample = document.getElementById("liveOfferExample");
 
@@ -94,9 +98,10 @@ function setupEventListeners() {
     pilotSignupForm.businessName?.addEventListener("input", updateOfferPreview);
     pilotSignupForm.maximumReward?.addEventListener("input", updateOfferPreview);
     pilotSignupForm.restrictions?.addEventListener("input", updateOfferPreview);
+    pilotSignupForm.minimumPurchase?.addEventListener("input", updateOfferPreview);
     rewardPerPassField?.addEventListener("change", updateOfferPreview);
     maximumRewardField?.addEventListener("input", updateOfferPreview);
-    minimumPurchaseField?.addEventListener("change", updateOfferPreview);
+    minimumPurchaseField?.addEventListener("input", updateOfferPreview);
   }
 }
 
@@ -197,9 +202,12 @@ function validateForm() {
 
 function buildPayload() {
   const values = getFormValues();
-  const maxReward = normalizeMoney(values.maximumReward);
-  const perPass = normalizeMoney(values.rewardPerPass);
-  const offerText = `${perPass || "$0.25"} per pass · maximum ${maxReward || "$1.00"}`;
+  const maxReward = normalizeMoney(values.maximumReward || "$1.00");
+  const perPass = normalizeMoney(values.rewardPerPass || "$0.25");
+  const minimumPurchase = normalizeMoney(values.minimumPurchase || "");
+  const offerText = `${perPass} per pass · maximum ${maxReward}`;
+  const computedRestrictions = values.restrictions ? values.restrictions : (minimumPurchase !== "$0.00" ? `Minimum purchase ${minimumPurchase}` : "");
+
   return {
     businessName: values.businessName,
     businessAddress: values.businessAddress,
@@ -207,8 +215,11 @@ function buildPayload() {
     contactRole: values.contactRole,
     phone: values.phone,
     email: values.email,
+    rewardPerPass: perPass,
+    maximumPerx: maxReward,
+    minimumPurchase: minimumPurchase === "$0.00" ? "" : minimumPurchase,
     perxOffer: offerText,
-    restrictions: values.restrictions,
+    restrictions: computedRestrictions,
     authorizationConfirmed: values.authorizationConfirmed,
     ipAddress: "",
     userAgent: navigator.userAgent,
@@ -354,14 +365,21 @@ function setVerifiedPanelLoadingState() {
 function showVerifiedPanel(result) {
   const businessName = String(result.businessName || "Your business");
   const offer = String(result.perxOffer || "");
+  const rewardPerPass = String(result.rewardPerPass || result.reward_per_pass || "");
+  const maximumPerx = String(result.maximumPerx || result.maximum_perx || "");
+  const minimumPurchase = String(result.minimumPurchase || result.minimum_purchase || "");
   const restrictions = String(result.restrictions || "");
+  const rewardSummary = rewardPerPass ? `${rewardPerPass} per pass` : offer;
+  const maxSummary = maximumPerx ? `Maximum PERX: ${maximumPerx}` : "";
+  const minSummary = minimumPurchase ? `Minimum purchase: ${minimumPurchase}` : "";
+  const details = [rewardSummary, maxSummary, minSummary].filter(Boolean).join(" • ");
 
   if (result.alreadyVerified) {
     verifiedBusinessCopy.textContent = `You're already verified. ${businessName} is pending review.`;
   } else {
     verifiedBusinessCopy.textContent = `${businessName} has been submitted to PERX.`;
   }
-  verifiedOffer.textContent = offer;
+  verifiedOffer.textContent = details || offer;
   if (restrictions) {
     verifiedRestrictions.classList.remove("is-hidden");
     verifiedRestrictions.textContent = `Restrictions: ${restrictions}`;
@@ -391,20 +409,35 @@ function updateOfferPreview() {
   const businessName = values.businessName || "Your business";
   const reward = normalizeMoney(values.rewardPerPass || "$0.25");
   const maximum = normalizeMoney(values.maximumReward || "$1.00");
-  const minimum = normalizeMoney(values.minimumPurchase || "None");
+  const minimum = cleanValue(values.minimumPurchase || "");
   const restrictions = cleanValue(pilotSignupForm?.restrictions?.value || "");
+  const rewardValue = parseCurrency(values.rewardPerPass || "$0.25");
+  const maxValue = parseCurrency(maximum);
+  const stepValues = [rewardValue, rewardValue * 2, rewardValue * 3, maxValue];
+  const previewSteps = stepValues.map((amount) => formatCurrency(amount)).join(" → ");
+  const displayMinimum = minimum ? formatCurrency(minimum) : "None";
+  const maxCost = maximum;
 
   if (summaryBusinessName) summaryBusinessName.textContent = businessName;
   if (summaryBusinessNamePreview) summaryBusinessNamePreview.textContent = businessName;
   if (summaryMaximum) summaryMaximum.textContent = maximum;
-  if (summaryMinimum) summaryMinimum.textContent = `Minimum purchase: ${minimum}`;
+  if (summaryMaximumText) summaryMaximumText.textContent = maximum;
+  if (summaryMinimum) summaryMinimum.textContent = displayMinimum;
+  if (summaryMinimumText) summaryMinimumText.textContent = displayMinimum;
+  if (summaryMaximumCost) summaryMaximumCost.textContent = maxCost;
+  if (summaryMaximumCostText) summaryMaximumCostText.textContent = maxCost;
 
   if (summaryRestrictions) {
     summaryRestrictions.textContent = restrictions ? `Restrictions: ${restrictions}` : "Restrictions: None";
   }
 
   if (liveOfferExample) {
-    liveOfferExample.textContent = `${reward} per pass · ${maximum} maximum`;
+    liveOfferExample.textContent = previewSteps;
+  }
+
+  const rewardText = document.getElementById("summaryReward");
+  if (rewardText) {
+    rewardText.textContent = `${reward} per pass`;
   }
 }
 
@@ -446,11 +479,27 @@ function cleanValue(value) {
 
 function normalizeMoney(value) {
   const normalized = String(value || "").trim();
-  if (!normalized) return "$0.00";
+  if (!normalized || normalized === "Custom") return "$0.00";
   if (/^\$/.test(normalized)) return normalized;
   const numeric = Number(normalized.replace(/[^\d.]/g, ""));
   if (Number.isNaN(numeric)) return "$0.00";
   return `$${numeric.toFixed(2)}`;
+}
+
+function parseCurrency(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized || normalized === "Custom") return 0;
+  const numeric = Number(normalized.replace(/[^\d.]/g, ""));
+  return Number.isNaN(numeric) ? 0 : numeric;
+}
+
+function formatCurrency(value) {
+  const number = Number(value || 0);
+  if (number >= 1) {
+    return `$${number.toFixed(2)}`;
+  }
+  const cents = Math.round(number * 100);
+  return `${cents}¢`;
 }
 
 function isValidEmail(email) {
