@@ -2,23 +2,38 @@ const SPREADSHEET_ID = '19M0jKEKPFIeIeI5NIVIryoYY-cfuCF0CgqXEAfgrlrs';
 const SUBMISSIONS_SHEET_NAME = 'PERX Submissions';
 const SIMPLE_RESULTS_SHEET_NAME = 'PERX';
 const LEGACY_SIMPLE_RESULTS_SHEET_NAME = 'PERX Simple Results';
-const VERIFICATIONS_SHEET_NAME = 'PERX Verifications';
 const AUDIT_SHEET_NAME = 'PERX Audit Log';
 const SETTINGS_SHEET_NAME = 'PERX Settings';
+const PILOT_ADMIN_SHEET_NAME = 'PERX Pilot Admin';
 
 const ADMIN_EMAIL = 'chasemallor@gmail.com';
-const ADMIN_BYPASS_EMAIL = 'chasemallor@gmail.com';
 const SUPPORT_EMAIL = 'support@joinperx.com';
 const EMAIL_FROM_NAME = 'PERX';
+const JOIN_BASE_URL = 'https://joinperx.com/';
 
-const AGREEMENT_PREFIX = 'PERX-';
-const AGREEMENT_START_SEQUENCE = 241;
-const VERIFICATION_TTL_MINUTES = 15;
-const SUBMISSION_RATE_WINDOW_MS = 15 * 60 * 1000;
-const SUBMISSION_RATE_LIMIT = 5;
-const MAX_CODE_ATTEMPTS = 8;
+const PILOT_ID_PREFIX = 'PERX-PILOT-';
+const PILOT_SEQUENCE_START = 1;
+const PILOT_STORE_KEY = 'PERX_PILOT_STORE_V1';
+const PILOT_SEQUENCE_KEY = 'PERX_PILOT_SEQUENCE';
+const PILOT_RATE_KEY = 'PERX_PILOT_RATE_V1';
+
+const VERIFICATION_TTL_MINUTES = 60 * 24;
+const RESEND_TTL_SECONDS = 60;
+const MAX_RESENDS_PER_DAY = 10;
+const RATE_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT = 8;
 
 const ACTIONS = {
+  SUBMIT_PILOT_SIGNUP: 'submitPilotSignup',
+  RESEND_VERIFICATION_EMAIL: 'resendVerificationEmail',
+  UPDATE_SUBMISSION_EMAIL: 'updateSubmissionEmail',
+  VERIFY_EMAIL_TOKEN: 'verifyEmailToken',
+  GET_ADMIN_COUNTS: 'getPilotAdminCounts',
+  ADMIN_APPROVE_LIVE: 'adminApproveLive',
+  ADMIN_PAUSE: 'adminPause',
+  ADMIN_ARCHIVE: 'adminArchive',
+
+  // Legacy actions retained for compatibility with historical frontend URLs.
   START_VERIFICATION: 'startVerification',
   VERIFY_CODE: 'verifyCode',
   SUBMIT_AGREEMENT: 'submitAgreement',
@@ -29,30 +44,19 @@ const ACTIONS = {
 
 function doGet(e) {
   const params = (e && e.parameter) || {};
-  const action = String(params.action || '').trim();
-  const callback = String(params.callback || '').trim();
-
-  if (action === ACTIONS.ADMIN_APPROVE || action === ACTIONS.ADMIN_REJECT || action === ACTIONS.ADMIN_REQUEST_INFO) {
-    const status = action === ACTIONS.ADMIN_APPROVE
-      ? 'Approved'
-      : action === ACTIONS.ADMIN_REJECT
-        ? 'Rejected'
-        : 'More Info Requested';
-    const result = adminDecision_(params, status);
-    return HtmlService.createHtmlOutput(buildAdminResultPage_(result, status));
-  }
+  const action = cleanText_(params.action);
+  const callback = cleanText_(params.callback);
 
   try {
-    const result = routeAction_(action, params);
+    const result = routeAction_(action, params, true);
     if (callback) {
       return jsonpResponse_(callback, result);
     }
     return jsonResponse_(result);
   } catch (error) {
     tryLogAudit_('SERVER_ERROR', {
-      action,
-      message: getErrorMessage_(error),
-      stack: getErrorStack_(error)
+      action: action || 'GET',
+      message: getErrorMessage_(error)
     });
 
     const fallback = {
@@ -64,7 +68,6 @@ function doGet(e) {
     if (callback) {
       return jsonpResponse_(callback, fallback);
     }
-
     return jsonResponse_(fallback);
   }
 }
@@ -72,56 +75,67 @@ function doGet(e) {
 function doPost(e) {
   try {
     const payload = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    const action = String(payload.action || '').trim();
-    const result = routeAction_(action, payload);
-    return jsonResponse_(result);
+    const action = cleanText_(payload.action);
+    return jsonResponse_(routeAction_(action, payload, false));
   } catch (error) {
     tryLogAudit_('SERVER_ERROR', {
       action: 'POST',
-      message: getErrorMessage_(error),
-      stack: getErrorStack_(error)
+      message: getErrorMessage_(error)
     });
 
-    return jsonResponse_({ ok: false, message: 'Invalid request payload.', errorCode: 'BAD_REQUEST' });
+    return jsonResponse_({
+      ok: false,
+      message: 'Invalid request payload.',
+      errorCode: 'BAD_REQUEST'
+    });
   }
 }
 
-function routeAction_(action, payload) {
+function routeAction_(action, payload, isGet) {
   switch (action) {
+    case ACTIONS.SUBMIT_PILOT_SIGNUP:
+      return submitPilotSignup_(payload);
+    case ACTIONS.RESEND_VERIFICATION_EMAIL:
+      return resendVerificationEmail_(payload);
+    case ACTIONS.UPDATE_SUBMISSION_EMAIL:
+      return updateSubmissionEmail_(payload);
+    case ACTIONS.VERIFY_EMAIL_TOKEN:
+      return verifyEmailToken_(payload);
+    case ACTIONS.GET_ADMIN_COUNTS:
+      return getPilotAdminCounts_();
+    case ACTIONS.ADMIN_APPROVE_LIVE:
+      return adminStatusUpdate_(payload, 'LIVE', isGet);
+    case ACTIONS.ADMIN_PAUSE:
+      return adminStatusUpdate_(payload, 'PAUSED', isGet);
+    case ACTIONS.ADMIN_ARCHIVE:
+      return adminStatusUpdate_(payload, 'ARCHIVED', isGet);
+
+    // Legacy behavior: redirect to simple pilot messaging instead of hard failure.
     case ACTIONS.START_VERIFICATION:
-      return startVerification_(payload);
     case ACTIONS.VERIFY_CODE:
-      return verifyCode_(payload);
     case ACTIONS.SUBMIT_AGREEMENT:
-      return submitAgreement_(payload);
     case ACTIONS.ADMIN_APPROVE:
-      return adminDecision_(payload, 'Approved');
     case ACTIONS.ADMIN_REJECT:
-      return adminDecision_(payload, 'Rejected');
     case ACTIONS.ADMIN_REQUEST_INFO:
-      return adminDecision_(payload, 'More Info Requested');
+      return {
+        ok: false,
+        message: 'This onboarding endpoint is retired. Please use the Join PERX pilot form.',
+        errorCode: 'LEGACY_FLOW_RETIRED'
+      };
+
     default:
       return { ok: false, message: 'Unsupported action.', errorCode: 'UNSUPPORTED_ACTION' };
   }
 }
 
-function startVerification_(payload) {
-  const businessName = cleanText_(payload.businessName);
-  const businessEmail = normalizeEmail_(payload.businessEmail);
-  const businessPhone = cleanPhone_(payload.businessPhone);
-  const website = cleanText_(payload.website);
-  const ownerName = cleanText_(payload.ownerName);
-  const ipAddress = cleanText_(payload.ipAddress);
-
-  if (!businessName || !isValidEmail_(businessEmail) || !businessPhone) {
-    return {
-      ok: false,
-      message: 'Business name, valid email, and phone are required to send the email code.',
-      errorCode: 'VALIDATION_ERROR'
-    };
+function submitPilotSignup_(payload) {
+  const submission = normalizePilotSubmission_(payload);
+  const validationMessage = validatePilotSubmission_(submission);
+  if (validationMessage) {
+    return { ok: false, message: validationMessage, errorCode: 'VALIDATION_ERROR' };
   }
 
-  if (!passesRateLimit_(ipAddress, businessEmail)) {
+  if (!passesRateLimit_(submission.ipAddress, submission.email)) {
     return {
       ok: false,
       message: 'Too many attempts. Please wait a few minutes and try again.',
@@ -129,1114 +143,640 @@ function startVerification_(payload) {
     };
   }
 
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + VERIFICATION_TTL_MINUTES * 60 * 1000);
-  const sessionId = createSessionId_();
-  const emailCode = generateSixDigitCode_();
-
-  sendEmailCode_(businessEmail, ownerName || businessName, emailCode);
-
-  const sheet = getOrCreateVerificationSheet_();
-  sheet.appendRow([
-    sessionId,
-    formatIso_(now),
-    formatIso_(expiresAt),
-    businessName,
-    businessEmail,
-    businessPhone,
-    website,
-    ownerName,
-    maskCode_(emailCode),
-    'Manual Pending',
-    hashCode_(emailCode),
-    '',
-    'false',
-    'false',
-    '',
-    '',
-    ipAddress,
-    cleanText_(payload.userAgent),
-    cleanText_(payload.deviceInfo),
-    '0',
-    '0',
-    '',
-    'Manual'
-  ]);
-
-  logAudit_('VERIFICATION_STARTED', {
-    sessionId,
-    businessName,
-    businessEmail,
-    businessPhone,
-    ipAddress
-  });
-
-  return {
-    ok: true,
-    message: 'Confirmation code sent to your business email. PERX may confirm the phone number before approval.',
-    sessionId,
-    expiresInMinutes: VERIFICATION_TTL_MINUTES,
-    verificationPolicy: 'Business email confirmation is required before submission. Phone confirmation is manual before approval.'
-  };
-}
-
-function verifyCode_(payload) {
-  const sessionId = cleanText_(payload.sessionId);
-  const channel = cleanText_(payload.channel).toLowerCase();
-  const code = cleanText_(payload.code);
-  const ipAddress = cleanText_(payload.ipAddress);
-
-  if (!sessionId || !/^[0-9]{6}$/.test(code) || channel !== 'email') {
-    return { ok: false, message: 'Invalid verification request.', errorCode: 'VALIDATION_ERROR' };
-  }
-
-  const rowMatch = findVerificationSessionRow_(sessionId);
-  if (!rowMatch) {
-    return { ok: false, message: 'Verification session not found.', errorCode: 'SESSION_NOT_FOUND' };
-  }
-
-  const rowValues = rowMatch.sheet.getRange(rowMatch.row, 1, 1, 23).getValues()[0];
-  const bypassLimits = isAdminBypassEmail_(rowValues[4]);
-
-  const sheet = rowMatch.sheet;
-  const row = rowMatch.row;
-  const values = rowValues;
-
-  const expiresAt = parseDate_(values[2]);
-  if (expiresAt && expiresAt.getTime() < Date.now()) {
-    return { ok: false, message: 'Verification session expired. Send new codes.', errorCode: 'SESSION_EXPIRED' };
-  }
-
-  let emailAttempts = Number(values[19] || 0);
-  emailAttempts += 1;
-
-  if (!bypassLimits && emailAttempts > MAX_CODE_ATTEMPTS) {
-    return { ok: false, message: 'Too many email verification attempts.', errorCode: 'TOO_MANY_ATTEMPTS' };
-  }
-
-  const ok = safeEquals_(hashCode_(code), String(values[10] || ''));
-  sheet.getRange(row, 20).setValue(String(emailAttempts));
-
-  if (!ok) {
-    return { ok: false, message: 'Incorrect email code.', errorCode: 'INVALID_CODE' };
-  }
-
-  sheet.getRange(row, 13).setValue('true');
-  sheet.getRange(row, 15).setValue(formatIso_(new Date()));
-  sheet.getRange(row, 22).setValue(ipAddress);
-
-  logAudit_('EMAIL_VERIFIED', { sessionId, ipAddress });
-
-  return { ok: true, message: 'Email verified successfully.' };
-}
-
-function submitAgreement_(payload) {
-  try {
-    const submission = normalizeSubmissionPayload_(payload);
-
-    const validationMessage = validateSubmission_(submission);
-    if (validationMessage) {
-      return { ok: false, message: validationMessage, errorCode: 'VALIDATION_ERROR' };
-    }
-
-    if (!passesRateLimit_(submission.ipAddress, submission.businessEmail)) {
-      return {
-        ok: false,
-        message: 'Too many submissions from this source. Please wait and try again.',
-        errorCode: 'RATE_LIMITED'
-      };
-    }
-
-    const agreementId = nextAgreementId_();
-    const now = new Date();
-    const status = 'Pending Approval';
-
-    const verification = getSubmissionSession_(submission);
-    if (!verification.ok) {
-      try {
-        appendSimpleResultRow_(submission, agreementId, 'Verification blocked', now);
-      } catch (error) {
-        tryLogAudit_('SIMPLE_RESULTS_WRITE_FAILED', {
-          agreementId,
-          message: getErrorMessage_(error),
-          stack: getErrorStack_(error)
-        });
-      }
-
-      return verification;
-    }
-
-    const existingDupes = detectDuplicateSubmission_(submission);
-    const fraudFlags = computeFraudFlags_(submission, verification.session, existingDupes);
-
-    let pdfResult = { file: null, url: '' };
-    const processingNotes = [];
-
-    try {
-      pdfResult = generateAgreementPdf_(submission, verification.session, agreementId, now);
-    } catch (error) {
-      const message = 'PDF generation failed: ' + getErrorMessage_(error);
-      processingNotes.push(message);
-      tryLogAudit_('PDF_GENERATION_FAILED', {
-        agreementId,
-        businessName: submission.businessName,
-        message,
-        stack: getErrorStack_(error)
-      });
-    }
-
-    const pdfUrl = pdfResult.url || '';
-
-    const rowData = buildSubmissionRow_(submission, verification.session, {
-      agreementId,
-      status,
-      submittedAt: now,
-      fraudFlags,
-      pdfUrl,
-      publicBusinessMatchStatus: simulateBusinessMatch_(submission),
-      ownershipVerified: 'Pending Review',
-      internalTags: processingNotes.join(' | ')
-    });
-
-    const sheet = getOrCreateSubmissionSheet_();
-    let submissionRow = 0;
-
-    try {
-      sheet.appendRow(rowData);
-      submissionRow = sheet.getLastRow();
-    } catch (error) {
-      try {
-        submissionRow = sheet.getLastRow() + 1;
-        sheet.getRange(submissionRow, 1, 1, rowData.length).setValues([rowData]);
-      } catch (fallbackError) {
-        throw fallbackError;
-      }
-    }
-
-    try {
-      appendSimpleResultRow_(submission, agreementId, status, now);
-    } catch (error) {
-      tryLogAudit_('SIMPLE_RESULTS_WRITE_FAILED', {
-        agreementId,
-        message: getErrorMessage_(error),
-        stack: getErrorStack_(error)
-      });
-    }
-
-    try {
-      formatSubmissionSheet_(sheet);
-    } catch (error) {
-      tryLogAudit_('SUBMISSION_SHEET_FORMATTING_FAILED', {
-        agreementId,
-        message: getErrorMessage_(error),
-        stack: getErrorStack_(error)
-      });
-    }
-
-    try {
-      sendBusinessConfirmation_(submission, agreementId, pdfResult.file);
-    } catch (error) {
-      const message = 'Business confirmation email failed: ' + getErrorMessage_(error);
-      processingNotes.push(message);
-      tryLogAudit_('BUSINESS_CONFIRMATION_EMAIL_FAILED', {
-        agreementId,
-        businessEmail: submission.businessEmail,
-        message,
-        stack: getErrorStack_(error)
-      });
-    }
-
-    try {
-      sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, pdfUrl);
-    } catch (error) {
-      const message = 'Admin notification email failed: ' + getErrorMessage_(error);
-      processingNotes.push(message);
-      tryLogAudit_('ADMIN_NOTIFICATION_EMAIL_FAILED', {
-        agreementId,
-        adminEmail: ADMIN_EMAIL,
-        message,
-        stack: getErrorStack_(error)
-      });
-    }
-
-    if (processingNotes.length) {
-      try {
-        sheet.getRange(submissionRow, 41).setValue(processingNotes.join(' | '));
-      } catch (error) {
-        tryLogAudit_('PROCESSING_NOTES_UPDATE_FAILED', {
-          agreementId,
-          message: getErrorMessage_(error),
-          stack: getErrorStack_(error)
-        });
-      }
-    }
-
-    tryLogAudit_('AGREEMENT_SUBMITTED', {
-      agreementId,
-      businessName: submission.businessName,
-      businessEmail: submission.businessEmail,
-      status,
-      fraudFlags: fraudFlags.join('|'),
-      processingNotes: processingNotes.join('|')
-    });
-
-    return {
-      ok: true,
-      message: processingNotes.length
-        ? 'Agreement submitted successfully. PERX received it and will finish processing the file during review.'
-        : 'Agreement submitted successfully. Pending admin review.',
-      agreementId,
-      pdfUrl,
-      approvalStatus: status,
-      fraudFlags
-    };
-  } catch (error) {
-    const fallbackId = AGREEMENT_PREFIX + 'FALLBACK-' + String(Date.now());
-    let fallbackSaved = false;
-
-    try {
-      const fallbackSubmission = normalizeSubmissionPayload_(payload || {});
-      appendSimpleResultRow_(fallbackSubmission, fallbackId, 'Fallback Saved', new Date());
-      fallbackSaved = true;
-    } catch (fallbackError) {
-      tryLogAudit_('SUBMIT_AGREEMENT_FALLBACK_WRITE_FAILED', {
-        fallbackId,
-        message: getErrorMessage_(fallbackError),
-        stack: getErrorStack_(fallbackError)
-      });
-    }
-
-    tryLogAudit_('SUBMIT_AGREEMENT_FATAL', {
-      fallbackId,
-      fallbackSaved,
-      message: getErrorMessage_(error),
-      stack: getErrorStack_(error)
-    });
-
-    if (fallbackSaved) {
-      return {
-        ok: true,
-        message: 'Agreement submitted in backup mode. PERX will review and process it manually.',
-        agreementId: fallbackId,
-        pdfUrl: '',
-        approvalStatus: 'Pending Approval',
-        fraudFlags: ['Fallback path']
-      };
-    }
-
+  const duplicateCheck = detectDuplicatePilotSubmission_(submission);
+  if (duplicateCheck.duplicate) {
     return {
       ok: false,
-      message: 'Submission failed while saving the agreement and fallback capture failed. Please try again.',
-      errorCode: 'SERVER_ERROR'
+      message: duplicateCheck.message,
+      errorCode: 'DUPLICATE_SUBMISSION'
     };
   }
-}
 
-function adminDecision_(payload, status) {
-  const agreementId = cleanText_(payload.agreementId);
-  const adminNotes = cleanText_(payload.adminNotes);
+  const now = new Date();
+  const submissionId = nextPilotSubmissionId_();
+  const tokenData = buildVerificationToken_();
 
-  if (!agreementId) {
-    return { ok: false, message: 'Agreement ID is required.', errorCode: 'VALIDATION_ERROR' };
+  const row = buildPilotSubmissionRow_(submission, {
+    submissionId: submissionId,
+    now: now,
+    tokenHash: tokenData.hash,
+    tokenExpiresAt: tokenData.expiresAt,
+    resendCount: 0,
+    lastResendAt: '',
+    verifiedAt: '',
+    status: 'UNVERIFIED'
+  });
+
+  appendSubmissionObject_(row);
+
+  let emailSent = true;
+  let message = 'Check your email to confirm your business signup.';
+  try {
+    sendPilotVerificationEmail_(row, tokenData.rawToken);
+  } catch (error) {
+    emailSent = false;
+    message = "We couldn't send the verification email. Please try again.";
+    tryLogAudit_('VERIFICATION_EMAIL_SEND_FAILED', {
+      submissionId: submissionId,
+      message: getErrorMessage_(error)
+    });
   }
 
-  const found = findSubmissionByAgreementId_(agreementId);
-  if (!found) {
-    return { ok: false, message: 'Agreement not found.', errorCode: 'NOT_FOUND' };
-  }
+  appendSimpleResultRow_(row);
+  refreshPilotAdminSheet_();
 
-  const row = found.row;
-  const sheet = found.sheet;
-  const values = sheet.getRange(row, 1, 1, 41).getValues()[0];
-
-  sheet.getRange(row, 36).setValue(status);
-  sheet.getRange(row, 37).setValue(formatIso_(new Date()));
-  sheet.getRange(row, 38).setValue(adminNotes);
-
-  if (status === 'Approved') {
-    sheet.getRange(row, 39).setValue('Approved by PERX admin');
-  }
-
-  const businessEmail = normalizeEmail_(values[9]);
-  const businessName = cleanText_(values[5]);
-  const offer = cleanText_(values[14]);
-
-  sendAdminDecisionEmail_(businessEmail, businessName, agreementId, status, offer, adminNotes);
-
-  logAudit_('ADMIN_DECISION', {
-    agreementId,
-    status,
-    adminNotes
+  tryLogAudit_('PILOT_SIGNUP_SUBMITTED', {
+    submissionId: submissionId,
+    businessName: submission.businessName,
+    email: submission.email,
+    emailSent: emailSent
   });
 
   return {
     ok: true,
-    message: 'Decision updated successfully.',
-    agreementId,
-    status
+    message: message,
+    submissionId: submissionId,
+    emailSent: emailSent,
+    status: 'UNVERIFIED'
   };
 }
 
-function normalizeSubmissionPayload_(payload) {
-  const maxDiscount = normalizeMoney_(payload.maxDiscount);
-  const offerDetails = cleanText_(payload.offerDetails) || buildOfferDetails_(maxDiscount);
-  const offerRestrictions = cleanText_(payload.offerRestrictions) || buildOfferRestrictions_(maxDiscount);
+function resendVerificationEmail_(payload) {
+  const submissionId = cleanText_(payload.submissionId);
+  const email = normalizeEmail_(payload.email);
+  if (!submissionId) {
+    return { ok: false, message: 'Submission ID is required.', errorCode: 'VALIDATION_ERROR' };
+  }
+
+  const found = findPilotSubmissionRow_(submissionId);
+  if (!found) {
+    return { ok: false, message: 'Submission not found.', errorCode: 'NOT_FOUND' };
+  }
+
+  const row = found.object;
+  if (email && normalizeEmail_(row.email) !== email) {
+    return { ok: false, message: 'Submission not found for this email.', errorCode: 'NOT_FOUND' };
+  }
+
+  if (asBoolean_(row.emailVerified)) {
+    return {
+      ok: true,
+      message: "You're already verified. Your business is pending review.",
+      submissionId: submissionId,
+      alreadyVerified: true
+    };
+  }
+
+  const resendCount = Number(row.resendCount || 0);
+  const lastResendAt = parseDate_(row.lastResendAt);
+  const now = new Date();
+
+  if (resendCount >= MAX_RESENDS_PER_DAY) {
+    return {
+      ok: false,
+      message: 'Too many resend requests. Please try again later.',
+      errorCode: 'RESEND_RATE_LIMITED'
+    };
+  }
+
+  if (lastResendAt && now.getTime() - lastResendAt.getTime() < RESEND_TTL_SECONDS * 1000) {
+    return {
+      ok: false,
+      message: 'Please wait a moment before resending.',
+      errorCode: 'RESEND_RATE_LIMITED'
+    };
+  }
+
+  const tokenData = buildVerificationToken_();
+  updateSubmissionFields_(found, {
+    verificationTokenHash: tokenData.hash,
+    verificationTokenExpiresAt: formatIso_(tokenData.expiresAt),
+    verificationTokenUsedAt: '',
+    resendCount: String(resendCount + 1),
+    lastResendAt: formatIso_(now),
+    latestVerificationRequestAt: formatIso_(now),
+    updatedAtPilot: formatIso_(now)
+  });
+
+  try {
+    sendPilotVerificationEmail_(found.object, tokenData.rawToken);
+  } catch (error) {
+    tryLogAudit_('VERIFICATION_EMAIL_RESEND_FAILED', {
+      submissionId: submissionId,
+      message: getErrorMessage_(error)
+    });
+    return { ok: false, message: "We couldn't send the verification email. Please try again.", errorCode: 'EMAIL_FAILED' };
+  }
+
+  tryLogAudit_('PILOT_VERIFICATION_RESENT', {
+    submissionId: submissionId,
+    email: row.email
+  });
 
   return {
-    sessionId: cleanText_(payload.sessionId),
-    agreementVersion: cleanText_(payload.agreementVersion) || '2026.06.26-r3',
-    businessName: cleanText_(payload.businessName),
-    businessAddress: cleanText_(payload.businessAddress),
-    city: cleanText_(payload.city),
-    state: cleanText_(payload.state).toUpperCase(),
-    zipCode: cleanText_(payload.zipCode),
-    businessPhone: cleanPhone_(payload.businessPhone),
-    businessEmail: normalizeEmail_(payload.businessEmail),
-    website: cleanText_(payload.website),
-    businessCategory: cleanText_(payload.businessCategory),
-    ownerName: cleanText_(payload.ownerName),
-    jobTitle: cleanText_(payload.jobTitle),
-    signerRole: cleanText_(payload.signerRole),
-    authorityBasis: cleanText_(payload.authorityBasis),
-    notes: cleanText_(payload.notes),
-    maxDiscount,
-    offerDetails,
-    offerRestrictions,
-    signatureName: cleanText_(payload.signatureName) || cleanText_(payload.ownerName),
-    signatureDate: cleanText_(payload.signatureDate),
-    drawnSignature: cleanText_(payload.drawnSignature),
-    drawnSignaturePresent: cleanText_(payload.drawnSignaturePresent) === 'true',
-    consentAuthority: cleanText_(payload.consentAuthority) === 'true',
-    consentAgreement: cleanText_(payload.consentAgreement) === 'true',
-    consentLegalBinding: cleanText_(payload.consentLegalBinding) === 'true',
-    consentESign: cleanText_(payload.consentESign) === 'true',
-    consentPerjury: cleanText_(payload.consentPerjury) === 'true',
-    consentSignatureEffect: cleanText_(payload.consentSignatureEffect || payload.consentCountersignature) === 'true',
-    formStartedAt: cleanText_(payload.formStartedAt),
-    submittedAt: cleanText_(payload.submittedAt),
-    ipAddress: cleanText_(payload.ipAddress),
-    userAgent: cleanText_(payload.userAgent),
-    browser: cleanText_(payload.browser),
-    operatingSystem: cleanText_(payload.operatingSystem),
-    deviceInfo: cleanText_(payload.deviceInfo),
-    approxLocation: cleanText_(payload.approxLocation),
-    emailVerificationStatus: cleanText_(payload.emailVerificationStatus) === 'true',
-    phoneVerificationStatus: cleanText_(payload.phoneVerificationStatus) === 'true',
-    emailDomainStatus: 'NOT_CHECKED'
+    ok: true,
+    message: 'Verification email sent.',
+    submissionId: submissionId
   };
 }
 
-function validateSubmission_(submission) {
-  const required = [
-    submission.sessionId,
-    submission.businessName,
-    submission.businessAddress,
-    submission.city,
-    submission.state,
-    submission.zipCode,
-    submission.businessPhone,
-    submission.businessEmail,
-    submission.businessCategory,
-    submission.ownerName,
-    submission.jobTitle,
-    submission.signerRole,
-    submission.authorityBasis,
-    submission.maxDiscount,
-    submission.offerDetails,
-    submission.offerRestrictions,
-    submission.signatureName,
-    submission.signatureDate
-  ];
+function updateSubmissionEmail_(payload) {
+  const submissionId = cleanText_(payload.submissionId);
+  const oldEmail = normalizeEmail_(payload.oldEmail);
+  const newEmail = normalizeEmail_(payload.newEmail);
 
-  for (let index = 0; index < required.length; index += 1) {
-    if (!required[index]) {
-      return 'Please complete all required fields before submission.';
-    }
+  if (!submissionId || !oldEmail || !newEmail || !isValidEmail_(newEmail)) {
+    return { ok: false, message: 'A valid updated email is required.', errorCode: 'VALIDATION_ERROR' };
   }
 
-  if (!isValidEmail_(submission.businessEmail)) {
-    return 'Enter a valid business email address.';
+  const found = findPilotSubmissionRow_(submissionId);
+  if (!found) {
+    return { ok: false, message: 'Submission not found.', errorCode: 'NOT_FOUND' };
   }
 
-  if (!/^[0-9]{5}$/.test(submission.zipCode) || submission.state !== 'NY') {
-    return 'Enter a valid New York ZIP code.';
+  const row = found.object;
+  if (normalizeEmail_(row.email) !== oldEmail) {
+    return { ok: false, message: 'Submission not found for this email.', errorCode: 'NOT_FOUND' };
   }
 
-  if (!submission.consentAuthority || !submission.consentAgreement || !submission.consentLegalBinding || !submission.consentESign || !submission.consentPerjury || !submission.consentSignatureEffect) {
-    return 'All required agreement confirmations must be accepted.';
+  if (asBoolean_(row.emailVerified)) {
+    return {
+      ok: false,
+      message: 'This submission is already verified and cannot change email here.',
+      errorCode: 'ALREADY_VERIFIED'
+    };
   }
 
-  if (!submission.emailVerificationStatus) {
-    return 'Business email confirmation is required before submission.';
+  const tokenData = buildVerificationToken_();
+  const now = new Date();
+
+  updateSubmissionFields_(found, {
+    email: newEmail,
+    businessEmail: newEmail,
+    verificationTokenHash: tokenData.hash,
+    verificationTokenExpiresAt: formatIso_(tokenData.expiresAt),
+    verificationTokenUsedAt: '',
+    latestVerificationRequestAt: formatIso_(now),
+    updatedAtPilot: formatIso_(now)
+  });
+
+  const refreshed = findPilotSubmissionRow_(submissionId);
+  try {
+    sendPilotVerificationEmail_(refreshed.object, tokenData.rawToken);
+  } catch (error) {
+    tryLogAudit_('VERIFICATION_EMAIL_SEND_FAILED_AFTER_EMAIL_UPDATE', {
+      submissionId: submissionId,
+      message: getErrorMessage_(error)
+    });
+    return { ok: false, message: "We couldn't send the verification email. Please try again.", errorCode: 'EMAIL_FAILED' };
+  }
+
+  appendSimpleResultRow_(refreshed.object);
+  refreshPilotAdminSheet_();
+
+  tryLogAudit_('PILOT_EMAIL_UPDATED', {
+    submissionId: submissionId,
+    oldEmail: oldEmail,
+    newEmail: newEmail
+  });
+
+  return {
+    ok: true,
+    message: 'Email updated and verification sent.',
+    submissionId: submissionId
+  };
+}
+
+function verifyEmailToken_(payload) {
+  const submissionId = cleanText_(payload.submissionId);
+  const token = cleanText_(payload.token);
+
+  if (!submissionId || !token) {
+    return { ok: false, message: 'Invalid verification link.', errorCode: 'INVALID_LINK' };
+  }
+
+  const found = findPilotSubmissionRow_(submissionId);
+  if (!found) {
+    return { ok: false, message: 'Submission not found.', errorCode: 'NOT_FOUND' };
+  }
+
+  const row = found.object;
+  const now = new Date();
+
+  if (asBoolean_(row.emailVerified)) {
+    return {
+      ok: true,
+      message: 'Your email has already been verified.',
+      alreadyVerified: true,
+      businessName: row.businessName,
+      perxOffer: row.perxOffer || row.offerDetails,
+      restrictions: row.restrictions || row.offerRestrictions,
+      status: row.pilotStatus || 'PENDING'
+    };
+  }
+
+  const expiresAt = parseDate_(row.verificationTokenExpiresAt);
+  if (!expiresAt || expiresAt.getTime() < now.getTime()) {
+    return {
+      ok: false,
+      message: 'This verification link has expired.',
+      errorCode: 'TOKEN_EXPIRED',
+      submissionId: submissionId,
+      email: normalizeEmail_(row.email || row.businessEmail)
+    };
+  }
+
+  const usedAt = parseDate_(row.verificationTokenUsedAt);
+  if (usedAt) {
+    return {
+      ok: true,
+      message: 'Your email has already been verified.',
+      alreadyVerified: true,
+      businessName: row.businessName,
+      perxOffer: row.perxOffer || row.offerDetails,
+      restrictions: row.restrictions || row.offerRestrictions,
+      status: row.pilotStatus || 'PENDING'
+    };
+  }
+
+  const tokenHash = hashText_(token);
+  if (!safeEquals_(tokenHash, cleanText_(row.verificationTokenHash))) {
+    return {
+      ok: false,
+      message: 'This verification link is invalid.',
+      errorCode: 'INVALID_TOKEN'
+    };
+  }
+
+  updateSubmissionFields_(found, {
+    emailVerified: 'true',
+    emailVerificationStatus: 'Confirmed',
+    emailVerifiedAt: formatIso_(now),
+    verificationTokenUsedAt: formatIso_(now),
+    pilotStatus: 'PENDING',
+    pendingStatus: 'Pending Review',
+    approvalStatus: 'Pending Review',
+    updatedAtPilot: formatIso_(now),
+    submittedAtPilot: cleanText_(row.submittedAtPilot) || formatIso_(now)
+  });
+
+  const refreshed = findPilotSubmissionRow_(submissionId).object;
+
+  try {
+    sendAdminPilotReviewEmail_(refreshed);
+  } catch (error) {
+    tryLogAudit_('ADMIN_REVIEW_NOTIFICATION_FAILED', {
+      submissionId: submissionId,
+      message: getErrorMessage_(error)
+    });
+  }
+
+  appendSimpleResultRow_(refreshed);
+  refreshPilotAdminSheet_();
+
+  tryLogAudit_('PILOT_EMAIL_VERIFIED', {
+    submissionId: submissionId,
+    businessName: refreshed.businessName,
+    email: refreshed.email
+  });
+
+  return {
+    ok: true,
+    message: 'Verification successful.',
+    businessName: refreshed.businessName,
+    perxOffer: refreshed.perxOffer || refreshed.offerDetails,
+    restrictions: refreshed.restrictions || refreshed.offerRestrictions,
+    status: 'PENDING'
+  };
+}
+
+function adminStatusUpdate_(payload, targetStatus, isGet) {
+  const submissionId = cleanText_(payload.submissionId || payload.sid);
+  if (!submissionId) {
+    return buildAdminResult_(false, 'Submission ID is required.', targetStatus, submissionId, isGet);
+  }
+
+  if (!validateAdminSignature_(payload, targetStatus)) {
+    return buildAdminResult_(false, 'Unauthorized admin action.', targetStatus, submissionId, isGet);
+  }
+
+  const found = findPilotSubmissionRow_(submissionId);
+  if (!found) {
+    return buildAdminResult_(false, 'Submission not found.', targetStatus, submissionId, isGet);
+  }
+
+  const row = found.object;
+  if (!asBoolean_(row.emailVerified)) {
+    return buildAdminResult_(false, 'Cannot change status before email verification.', targetStatus, submissionId, isGet);
+  }
+
+  const now = new Date();
+  const updatePayload = {
+    pilotStatus: targetStatus,
+    status: targetStatus,
+    approvalStatus: targetStatus,
+    updatedAtPilot: formatIso_(now)
+  };
+
+  if (targetStatus === 'LIVE') {
+    updatePayload.approvedAt = formatIso_(now);
+    updatePayload.pausedAt = '';
+  }
+  if (targetStatus === 'PAUSED') {
+    updatePayload.pausedAt = formatIso_(now);
+  }
+  if (targetStatus === 'ARCHIVED') {
+    updatePayload.archivedAt = formatIso_(now);
+  }
+
+  updateSubmissionFields_(found, updatePayload);
+  const refreshed = findPilotSubmissionRow_(submissionId).object;
+
+  appendSimpleResultRow_(refreshed);
+  refreshPilotAdminSheet_();
+
+  tryLogAudit_('PILOT_ADMIN_STATUS_UPDATED', {
+    submissionId: submissionId,
+    targetStatus: targetStatus
+  });
+
+  try {
+    sendAdminDecisionEmail_(refreshed, targetStatus);
+  } catch (error) {
+    tryLogAudit_('PILOT_ADMIN_DECISION_EMAIL_FAILED', {
+      submissionId: submissionId,
+      message: getErrorMessage_(error)
+    });
+  }
+
+  return buildAdminResult_(true, 'Status updated successfully.', targetStatus, submissionId, isGet);
+}
+
+function buildAdminResult_(ok, message, targetStatus, submissionId, isGet) {
+  const payload = {
+    ok: ok,
+    message: message,
+    status: targetStatus,
+    submissionId: submissionId
+  };
+
+  if (!isGet) {
+    return payload;
+  }
+
+  return {
+    ok: ok,
+    message:
+      '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>PERX Admin Result</title><style>' +
+      'body{font-family:Arial,sans-serif;background:#f4f7fb;margin:0;padding:20px;color:#0f2540;}'+
+      '.card{max-width:620px;margin:40px auto;background:#fff;border:1px solid #d7e2f0;border-radius:14px;padding:20px;}'+
+      'h1{margin:0 0 10px;} p{line-height:1.5;} .ok{color:#17784a;} .err{color:#b63030;}' +
+      '</style></head><body><main class="card"><h1>PERX Admin</h1>' +
+      '<p><strong>Submission ID:</strong> ' + escapeHtml_(submissionId) + '</p>' +
+      '<p><strong>Requested Status:</strong> ' + escapeHtml_(targetStatus) + '</p>' +
+      '<p class="' + (ok ? 'ok' : 'err') + '">' + escapeHtml_(message) + '</p>' +
+      '</main></body></html>',
+    html: true
+  };
+}
+
+function getPilotAdminCounts_() {
+  const rows = listPilotRows_();
+  const counts = summarizePilotCounts_(rows);
+  return {
+    ok: true,
+    signedOn: counts.signedOn,
+    live: counts.live,
+    pending: counts.pending,
+    unverified: counts.unverified
+  };
+}
+
+function normalizePilotSubmission_(payload) {
+  return {
+    submissionId: '',
+    businessName: cleanText_(payload.businessName),
+    businessAddress: cleanText_(payload.businessAddress),
+    contactName: cleanText_(payload.contactName),
+    contactRole: cleanText_(payload.contactRole),
+    phone: cleanPhone_(payload.phone),
+    email: normalizeEmail_(payload.email),
+    perxOffer: cleanText_(payload.perxOffer),
+    restrictions: cleanText_(payload.restrictions),
+    authorizationConfirmed: asBoolean_(payload.authorizationConfirmed),
+    ipAddress: cleanText_(payload.ipAddress),
+    userAgent: cleanText_(payload.userAgent),
+    source: cleanText_(payload.source) || 'joinperx.com'
+  };
+}
+
+function validatePilotSubmission_(submission) {
+  if (!submission.businessName || !submission.businessAddress || !submission.contactName) {
+    return 'Business name, address, and your name are required.';
+  }
+
+  if (!submission.contactRole) {
+    return 'Your role is required.';
+  }
+
+  if (!submission.phone || submission.phone.replace(/\D/g, '').length < 10) {
+    return 'A valid phone number is required.';
+  }
+
+  if (!isValidEmail_(submission.email)) {
+    return 'A valid email is required.';
+  }
+
+  if (!submission.perxOffer) {
+    return 'Please enter your PERX offer.';
+  }
+
+  if (!submission.authorizationConfirmed) {
+    return 'Authorization confirmation is required.';
   }
 
   return '';
 }
 
-function getSubmissionSession_(submission) {
-  if (submission.sessionId) {
-    return getVerifiedSession_(submission.sessionId);
-  }
-
-  return { ok: false, message: 'Business email confirmation is required before submission.', errorCode: 'VERIFICATION_REQUIRED' };
-}
-
-function getVerifiedSession_(sessionId) {
-  const rowMatch = findVerificationSessionRow_(sessionId);
-  if (!rowMatch) {
-    return { ok: false, message: 'Verification session not found.', errorCode: 'SESSION_NOT_FOUND' };
-  }
-
-  const values = rowMatch.sheet.getRange(rowMatch.row, 1, 1, 23).getValues()[0];
-  const expiresAt = parseDate_(values[2]);
-
-  if (expiresAt && expiresAt.getTime() < Date.now()) {
-    return { ok: false, message: 'Verification session expired.', errorCode: 'SESSION_EXPIRED' };
-  }
-
-  const emailVerified = String(values[12]) === 'true';
-  const phoneVerified = String(values[13]) === 'true';
-
-  if (!emailVerified) {
-    return {
-      ok: false,
-      message: 'Business email confirmation must be completed.',
-      errorCode: 'VERIFICATION_REQUIRED'
-    };
-  }
-
-  return {
-    ok: true,
-    session: {
-      sessionId: String(values[0] || ''),
-      startedAt: String(values[1] || ''),
-      expiresAt: String(values[2] || ''),
-      businessName: cleanText_(values[3]),
-      businessEmail: normalizeEmail_(values[4]),
-      businessPhone: cleanPhone_(values[5]),
-      website: cleanText_(values[6]),
-      ownerName: cleanText_(values[7]),
-      emailVerifiedAt: String(values[14] || ''),
-      phoneVerifiedAt: String(values[15] || ''),
-      verificationIp: String(values[21] || '')
-    }
-  };
-}
-
-function detectDuplicateSubmission_(submission) {
-  const sheet = getOrCreateSubmissionSheet_();
-  const lastRow = sheet.getLastRow();
-
-  if (lastRow < 2) {
-    return {
-      duplicateBusiness: false,
-      duplicateEmail: false,
-      duplicatePhone: false,
-      duplicateIpRecentCount: 0,
-      duplicateDeviceRecentCount: 0
-    };
-  }
-
-  const rows = sheet.getRange(2, 1, lastRow - 1, 41).getValues();
+function detectDuplicatePilotSubmission_(submission) {
+  const rows = listPilotRows_();
   const nowMs = Date.now();
 
-  let duplicateBusiness = false;
-  let duplicateEmail = false;
-  let duplicatePhone = false;
-  let duplicateIpRecentCount = 0;
-  let duplicateDeviceRecentCount = 0;
+  for (var i = 0; i < rows.length; i += 1) {
+    var row = rows[i];
+    var sameBusiness = cleanText_(row.businessName).toLowerCase() === submission.businessName.toLowerCase();
+    var sameEmail = normalizeEmail_(row.email || row.businessEmail) === submission.email;
 
-  rows.forEach(function (row) {
-    const businessName = cleanText_(row[5]).toLowerCase();
-    const email = normalizeEmail_(row[9]);
-    const phone = cleanPhone_(row[8]);
-    const ipAddress = cleanText_(row[23]);
-    const deviceInfo = cleanText_(row[26]);
-    const submittedAt = parseDate_(row[1]);
-
-    if (businessName && businessName === submission.businessName.toLowerCase()) {
-      duplicateBusiness = true;
-    }
-    if (email && email === submission.businessEmail) {
-      duplicateEmail = true;
-    }
-    if (phone && phone === submission.businessPhone) {
-      duplicatePhone = true;
+    if (!sameBusiness && !sameEmail) {
+      continue;
     }
 
-    if (submittedAt) {
-      const recent = nowMs - submittedAt.getTime() <= SUBMISSION_RATE_WINDOW_MS;
-      if (recent && ipAddress && ipAddress === submission.ipAddress) {
-        duplicateIpRecentCount += 1;
-      }
-      if (recent && deviceInfo && deviceInfo === submission.deviceInfo) {
-        duplicateDeviceRecentCount += 1;
-      }
-    }
-  });
+    var status = cleanText_(row.pilotStatus || row.status || row.approvalStatus);
+    var isVerified = asBoolean_(row.emailVerified) || cleanText_(row.emailVerificationStatus).toLowerCase() === 'confirmed';
 
-  return {
-    duplicateBusiness,
-    duplicateEmail,
-    duplicatePhone,
-    duplicateIpRecentCount,
-    duplicateDeviceRecentCount
-  };
-}
-
-function computeFraudFlags_(submission, verificationSession, dupes) {
-  const flags = [];
-
-  if (dupes.duplicateBusiness) {
-    flags.push('Duplicate business submitted');
-  }
-  if (dupes.duplicatePhone) {
-    flags.push('Duplicate phone number');
-  }
-  if (dupes.duplicateEmail) {
-    flags.push('Duplicate email address');
-  }
-  if (dupes.duplicateIpRecentCount >= 2) {
-    flags.push('Duplicate IPs in a short period');
-  }
-  if (dupes.duplicateDeviceRecentCount >= 2) {
-    flags.push('Multiple submissions from one device');
-  }
-
-  if (isHighRiskLocation_(submission.approxLocation)) {
-    flags.push('Impossible or high-risk location pattern');
-  }
-
-  if (submission.approxLocation.toLowerCase().indexOf('vpn') !== -1 || submission.userAgent.toLowerCase().indexOf('proxy') !== -1) {
-    flags.push('VPN/proxy signal');
-  }
-
-  if (!likelyBusinessName_(submission.businessName)) {
-    flags.push('Business name cannot be confidently located');
-  }
-
-  if (verificationSession.businessEmail !== submission.businessEmail || verificationSession.businessPhone !== submission.businessPhone) {
-    flags.push('Submission does not match verification session');
-  }
-
-  if (!submission.phoneVerificationStatus) {
-    flags.push('Phone confirmation pending or manual');
-  }
-
-  if (!flags.length) {
-    flags.push('No automated fraud flags');
-  }
-
-  return flags;
-}
-
-function buildSubmissionRow_(submission, session, context) {
-  return [
-    context.agreementId,
-    formatIso_(context.submittedAt),
-    submission.agreementVersion,
-    session.sessionId,
-    context.status,
-    submission.businessName,
-    submission.businessAddress,
-    submission.city,
-    submission.businessPhone,
-    submission.businessEmail,
-    submission.website,
-    submission.state,
-    submission.zipCode,
-    submission.businessCategory,
-    submission.offerDetails,
-    submission.ownerName,
-    submission.jobTitle,
-    submission.notes,
-    submission.signatureName,
-    submission.signatureDate,
-    submission.drawnSignaturePresent ? 'Yes' : 'No',
-    submission.drawnSignature,
-    cleanText_(submission.submittedAt),
-    submission.ipAddress,
-    submission.browser,
-    submission.operatingSystem,
-    submission.deviceInfo,
-    submission.userAgent,
-    submission.approxLocation,
-    verificationStatusLabel_(submission.emailVerificationStatus),
-    verificationStatusLabel_(submission.phoneVerificationStatus),
-    submission.emailDomainStatus,
-    context.publicBusinessMatchStatus,
-    context.fraudFlags.join(' | '),
-    context.pdfUrl,
-    context.status,
-    '',
-    '',
-    context.ownershipVerified,
-    formatIso_(new Date()),
-    cleanText_(context.internalTags),
-    submission.signerRole,
-    submission.authorityBasis,
-    submission.offerRestrictions,
-    submission.consentSignatureEffect ? 'Yes' : 'No',
-    '',
-    '',
-    '',
-    '',
-    '',
-    submission.maxDiscount
-  ];
-}
-
-function generateAgreementPdf_(submission, session, agreementId, submittedAt) {
-  const docName = agreementId + ' - ' + submission.businessName + ' - Signed Agreement';
-  const doc = DocumentApp.create(docName);
-  const body = doc.getBody();
-
-  body.appendParagraph('PERX Rewards Business Participation Agreement').setHeading(DocumentApp.ParagraphHeading.HEADING1);
-  body.appendParagraph('Agreement ID: ' + agreementId);
-  body.appendParagraph('Agreement Version: ' + submission.agreementVersion);
-  body.appendParagraph('Submission Timestamp: ' + formatIso_(submittedAt));
-  body.appendParagraph('Effective Date: This Agreement becomes effective when the Business\'s authorized representative electronically signs and submits it to PERX. PERX\'s receipt of the signed submission constitutes acceptance, and no separate PERX signature is required.');
-  body.appendParagraph('Launch Date: The date PERX Rewards is first made publicly available for download and use by the general public, which will occur only after at least 1,000 users have preordered the app.');
-
-  body.appendParagraph('');
-  body.appendParagraph('Business Information').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('Business Name: ' + submission.businessName);
-  body.appendParagraph('Business Address: ' + submission.businessAddress + ', ' + submission.city + ', ' + submission.state + ' ' + submission.zipCode);
-  body.appendParagraph('Business Phone: ' + submission.businessPhone);
-  body.appendParagraph('Business Email: ' + submission.businessEmail);
-  body.appendParagraph('Website: ' + (submission.website || 'N/A'));
-  body.appendParagraph('Business Category: ' + submission.businessCategory);
-
-  body.appendParagraph('');
-  body.appendParagraph('Authorized Representative').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('Full Name: ' + submission.ownerName);
-  body.appendParagraph('Job Title: ' + submission.jobTitle);
-  body.appendParagraph('Role at the Business: ' + submission.signerRole);
-  body.appendParagraph('Authority to Sign: ' + submission.authorityBasis);
-  body.appendParagraph('Typed Legal Signature Name: ' + submission.signatureName);
-  body.appendParagraph('Signature Date: ' + submission.signatureDate);
-  body.appendParagraph('Drawn Signature Included: ' + (submission.drawnSignaturePresent ? 'Yes' : 'No'));
-
-  body.appendParagraph('');
-  body.appendParagraph('Agreed Offer').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('Offer: ' + submission.offerDetails);
-  body.appendParagraph('Restrictions: ' + submission.offerRestrictions);
-  body.appendParagraph('Business Notes/Requests for PERX Review: ' + (submission.notes || 'None provided'));
-
-  body.appendParagraph('');
-  body.appendParagraph('1. Participation').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business agrees to participate in PERX Rewards and authorizes PERX to list and promote the Business through the PERX mobile application, website, social media, printed materials, and other promotional channels.');
-
-  body.appendParagraph('');
-  body.appendParagraph('2. Agreed Offer').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business authorizes PERX to select a discount amount up to the maximum submitted by the Business and to set an appropriate minimum purchase requirement. A discount pass becomes available when an eligible customer enters and passes through the Business\'s PERX proximity circle. After a customer claims a discount, that customer\'s eligibility resets after 24 hours. The Business agrees to honor the final offer published by PERX beginning on the Launch Date. Launch will not occur until at least 1,000 users have preordered the app.');
-
-  body.appendParagraph('');
-  body.appendParagraph('3. Participation Term').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('This Agreement is fully executed when the Business\'s authorized representative electronically signs and submits it. The Business\'s participation begins on the Launch Date. The Business agrees to remain an active participant on PERX and honor the agreed offer for twelve (12) months beginning on the Launch Date. After the initial 12-month period, this Agreement automatically renews month-to-month unless either party provides at least 30 days written notice. If PERX has not publicly launched within 12 months after this Agreement is signed, either party may cancel this Agreement by written notice before the Launch Date. Launch is expected only after at least 1,000 users have preordered the app.');
-
-  body.appendParagraph('');
-  body.appendParagraph('4. Business Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business agrees to honor the agreed offer, maintain accurate business information, notify PERX if its contact information or offer changes, and comply with applicable laws. The Business grants PERX permission to use its business name, logo, address, website, business hours, photographs approved by the Business, business description, and social media handles solely to promote the Business through PERX. The Business confirms it has the authority to grant this permission.');
-
-  body.appendParagraph('');
-  body.appendParagraph('5. PERX Responsibilities').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('PERX agrees to operate its platform in good faith and make reasonable efforts to maintain accurate Business information. PERX does not guarantee customer traffic, sales, revenue, or profits.');
-
-  body.appendParagraph('');
-  body.appendParagraph('6. Ending This Agreement').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('The Business may end this Agreement before the end of the initial 12-month term only if the Business permanently closes; the Business is sold to a new owner who chooses not to participate; continuing the agreed offer becomes unlawful; or PERX agrees in writing. PERX may immediately remove the Business from the platform if the Business repeatedly refuses to honor the agreed offer, provides false information, engages in fraudulent or illegal activity, or materially breaches this Agreement.');
-
-  body.appendParagraph('');
-  body.appendParagraph('7. Responsibility').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('Each party is responsible for its own actions. The Business is responsible for its products, services, pricing, refunds, taxes, customer service, and compliance with applicable law. PERX is not responsible for disputes between the Business and its customers.');
-
-  body.appendParagraph('');
-  body.appendParagraph('8. General Terms').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('This Agreement is governed by the laws of the State of New York. This Agreement contains the complete agreement between PERX and the Business regarding participation in PERX Rewards. Any changes to this Agreement must be agreed to in writing by both parties. If any part of this Agreement is found to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.');
-
-  body.appendParagraph('');
-  body.appendParagraph('Agreement Confirmations').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('Authority certification: ' + yesNo_(submission.consentAuthority));
-  body.appendParagraph('Agreement accepted: ' + yesNo_(submission.consentAgreement));
-  body.appendParagraph('Legally binding acknowledgment: ' + yesNo_(submission.consentLegalBinding));
-  body.appendParagraph('Electronic signature consent: ' + yesNo_(submission.consentESign));
-  body.appendParagraph('Perjury declaration accepted: ' + yesNo_(submission.consentPerjury));
-  body.appendParagraph('Signature effectiveness acknowledgment: ' + yesNo_(submission.consentSignatureEffect));
-
-  body.appendParagraph('');
-  body.appendParagraph('Business Electronic Signature Record').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('This Agreement is fully executed upon the Business\'s electronic signature and submission. No separate PERX signature is required.');
-  body.appendParagraph('Business Name: ' + submission.businessName);
-  body.appendParagraph('Authorized Representative: ' + submission.ownerName);
-  body.appendParagraph('Title: ' + submission.jobTitle);
-  const signatureBlob = buildSignatureImageBlob_(submission.drawnSignature);
-
-  if (signatureBlob) {
-    body.appendParagraph('Signature Image:');
-    const signatureImageParagraph = body.appendParagraph('');
-    const signatureImage = signatureImageParagraph.appendInlineImage(signatureBlob);
-    signatureImage.setWidth(260);
-    body.appendParagraph('Printed Name: ' + submission.signatureName);
-  } else {
-    body.appendParagraph('Signature: /s/ ' + submission.signatureName);
-    body.appendParagraph('Printed Name: ' + submission.signatureName);
-  }
-  body.appendParagraph('Date: ' + submission.signatureDate);
-
-  body.appendParagraph('');
-  body.appendParagraph('Verification and Metadata').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph('Verification Session ID: ' + session.sessionId);
-  body.appendParagraph('Email Verification Status: ' + verificationStatusLabel_(submission.emailVerificationStatus));
-  body.appendParagraph('Phone Verification Status: ' + verificationStatusLabel_(submission.phoneVerificationStatus));
-  body.appendParagraph('Email Verified At: ' + (session.emailVerifiedAt || 'N/A'));
-  body.appendParagraph('Phone Verified At: ' + (session.phoneVerifiedAt || 'N/A'));
-  body.appendParagraph('Submission IP Address: ' + (submission.ipAddress || 'N/A'));
-  body.appendParagraph('Verification IP Address: ' + (session.verificationIp || 'N/A'));
-  body.appendParagraph('Browser: ' + submission.browser);
-  body.appendParagraph('Operating System: ' + submission.operatingSystem);
-  body.appendParagraph('Device Information: ' + submission.deviceInfo);
-  body.appendParagraph('User Agent: ' + submission.userAgent);
-  body.appendParagraph('Approximate Location: ' + submission.approxLocation);
-
-  body.appendParagraph('');
-  body.appendParagraph('PERX retains this agreement and associated metadata as part of a permanent audit record.');
-
-  doc.saveAndClose();
-
-  const file = DriveApp.getFileById(doc.getId());
-  const pdfBlob = file.getAs(MimeType.PDF).setName(docName + '.pdf');
-  const pdfFile = DriveApp.createFile(pdfBlob);
-  file.setTrashed(true);
-
-  return {
-    file: pdfFile,
-    url: pdfFile.getUrl()
-  };
-}
-
-function buildSignatureImageBlob_(serializedSignature) {
-  const strokes = decodeSignatureStrokes_(serializedSignature);
-  if (!strokes.length) {
-    return null;
-  }
-
-  const width = 1000;
-  const height = 300;
-  const pixels = new Array(width * height * 3);
-  for (let index = 0; index < pixels.length; index += 1) {
-    pixels[index] = 255;
-  }
-
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  strokes.forEach(function (stroke) {
-    stroke.forEach(function (point) {
-      if (typeof point.x !== 'number' || typeof point.y !== 'number') {
-        return;
-      }
-      if (point.x < minX) minX = point.x;
-      if (point.y < minY) minY = point.y;
-      if (point.x > maxX) maxX = point.x;
-      if (point.y > maxY) maxY = point.y;
-    });
-  });
-
-  if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
-    return null;
-  }
-
-  const sourceWidth = Math.max(maxX - minX, 1);
-  const sourceHeight = Math.max(maxY - minY, 1);
-  const scale = Math.min(
-    (width - 36) / sourceWidth,
-    (height - 36) / sourceHeight
-  );
-  const offsetX = Math.round((width - sourceWidth * scale) / 2 - minX * scale);
-  const offsetY = Math.round((height - sourceHeight * scale) / 2 - minY * scale);
-
-  strokes.forEach(function (stroke) {
-    if (!stroke.length) {
-      return;
-    }
-
-    let previousPoint = null;
-
-    stroke.forEach(function (point) {
-      if (typeof point.x !== 'number' || typeof point.y !== 'number') {
-        return;
-      }
-
-      const currentPoint = {
-        x: Math.round(point.x * scale + offsetX),
-        y: Math.round(point.y * scale + offsetY)
+    if (isVerified && (status === 'PENDING' || status === 'LIVE' || status === 'PAUSED')) {
+      return {
+        duplicate: true,
+        message: 'A submission for this business/email already exists. Contact PERX if you need help.'
       };
-
-      if (previousPoint) {
-        drawSignatureLine_(pixels, width, height, previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
-      }
-
-      previousPoint = currentPoint;
-    });
-  });
-
-  const rowSize = Math.ceil((width * 3) / 4) * 4;
-  const fileSize = 54 + (rowSize * height);
-  const buffer = new Array(fileSize);
-
-  // BITMAPFILEHEADER
-  buffer[0] = 0x42;
-  buffer[1] = 0x4d;
-  writeUint32LE_(buffer, 2, fileSize);
-  writeUint32LE_(buffer, 10, 54);
-
-  // BITMAPINFOHEADER
-  writeUint32LE_(buffer, 14, 40);
-  writeUint32LE_(buffer, 18, width);
-  writeUint32LE_(buffer, 22, height);
-  writeUint16LE_(buffer, 26, 1);
-  writeUint16LE_(buffer, 28, 24);
-  writeUint32LE_(buffer, 30, 0);
-  writeUint32LE_(buffer, 34, rowSize * height);
-  writeUint32LE_(buffer, 38, 2835);
-  writeUint32LE_(buffer, 42, 2835);
-  writeUint32LE_(buffer, 46, 0);
-  writeUint32LE_(buffer, 50, 0);
-
-  let offset = 54;
-  const paddingBytes = rowSize - (width * 3);
-  for (let y = height - 1; y >= 0; y -= 1) {
-    for (let x = 0; x < width; x += 1) {
-      const pixelIndex = (y * width + x) * 3;
-      buffer[offset] = pixels[pixelIndex + 2];
-      buffer[offset + 1] = pixels[pixelIndex + 1];
-      buffer[offset + 2] = pixels[pixelIndex];
-      offset += 3;
     }
 
-    for (let pad = 0; pad < paddingBytes; pad += 1) {
-      buffer[offset] = 0;
-      offset += 1;
+    var created = parseDate_(row.submittedAtPilot || row.createdAt);
+    if (created && nowMs - created.getTime() < 2 * 60 * 60 * 1000) {
+      return {
+        duplicate: true,
+        message: 'A recent submission already exists. Check your email or resend verification.'
+      };
     }
   }
 
-  return Utilities.newBlob(buffer, 'image/bmp', 'signature.bmp');
+  return { duplicate: false, message: '' };
 }
 
-function drawSignatureLine_(pixels, width, height, startX, startY, endX, endY) {
-  let x0 = startX;
-  let y0 = startY;
-  const x1 = endX;
-  const y1 = endY;
+function buildPilotSubmissionRow_(submission, context) {
+  const nowIso = formatIso_(context.now);
+  return {
+    agreementId: context.submissionId,
+    createdAt: nowIso,
+    businessName: submission.businessName,
+    businessAddress: submission.businessAddress,
+    businessPhone: submission.phone,
+    businessEmail: submission.email,
+    ownerName: submission.contactName,
+    signerRole: submission.contactRole,
+    offerDetails: submission.perxOffer,
+    offerRestrictions: submission.restrictions,
+    notes: '',
+    pendingStatus: 'Email Verification Pending',
+    approvalStatus: 'Email Verification Pending',
+    emailVerificationStatus: 'Pending',
 
-  const deltaX = Math.abs(x1 - x0);
-  const deltaY = Math.abs(y1 - y0);
-  const stepX = x0 < x1 ? 1 : -1;
-  const stepY = y0 < y1 ? 1 : -1;
-  let error = deltaX - deltaY;
-
-  while (true) {
-    paintSignaturePixel_(pixels, width, height, x0, y0);
-    paintSignaturePixel_(pixels, width, height, x0 + 1, y0);
-    paintSignaturePixel_(pixels, width, height, x0 - 1, y0);
-    paintSignaturePixel_(pixels, width, height, x0, y0 + 1);
-    paintSignaturePixel_(pixels, width, height, x0, y0 - 1);
-
-    if (x0 === x1 && y0 === y1) {
-      break;
-    }
-
-    const doubleError = error * 2;
-    if (doubleError > -deltaY) {
-      error -= deltaY;
-      x0 += stepX;
-    }
-    if (doubleError < deltaX) {
-      error += deltaX;
-      y0 += stepY;
-    }
-  }
+    submissionId: context.submissionId,
+    contactName: submission.contactName,
+    contactRole: submission.contactRole,
+    phone: submission.phone,
+    email: submission.email,
+    perxOffer: submission.perxOffer,
+    restrictions: submission.restrictions,
+    emailVerified: 'false',
+    emailVerifiedAt: context.verifiedAt,
+    submittedAtPilot: nowIso,
+    pilotStatus: context.status,
+    approvedAt: '',
+    pausedAt: '',
+    archivedAt: '',
+    internalNotes: '',
+    verificationTokenHash: context.tokenHash,
+    verificationTokenExpiresAt: formatIso_(context.tokenExpiresAt),
+    verificationTokenUsedAt: '',
+    resendCount: String(context.resendCount || 0),
+    lastResendAt: context.lastResendAt,
+    latestVerificationRequestAt: nowIso,
+    source: submission.source,
+    updatedAtPilot: nowIso,
+    status: context.status,
+    signupType: 'PILOT_2026_SIMPLE',
+    userAgent: submission.userAgent,
+    ipAddress: submission.ipAddress
+  };
 }
 
-function paintSignaturePixel_(pixels, width, height, x, y) {
-  if (x < 0 || y < 0 || x >= width || y >= height) {
-    return;
-  }
+function sendPilotVerificationEmail_(row, rawToken) {
+  const toEmail = normalizeEmail_(row.email || row.businessEmail);
+  const submissionId = cleanText_(row.submissionId || row.agreementId);
+  const businessName = cleanText_(row.businessName);
+  const verificationUrl = buildVerificationUrl_(submissionId, rawToken);
 
-  const pixelIndex = (y * width + x) * 3;
-  pixels[pixelIndex] = 13;
-  pixels[pixelIndex + 1] = 59;
-  pixels[pixelIndex + 2] = 118;
-}
-
-function writeUint16LE_(buffer, offset, value) {
-  buffer[offset] = value & 0xff;
-  buffer[offset + 1] = (value >> 8) & 0xff;
-}
-
-function writeUint32LE_(buffer, offset, value) {
-  buffer[offset] = value & 0xff;
-  buffer[offset + 1] = (value >> 8) & 0xff;
-  buffer[offset + 2] = (value >> 16) & 0xff;
-  buffer[offset + 3] = (value >> 24) & 0xff;
-}
-
-function decodeSignatureStrokes_(serializedSignature) {
-  const raw = String(serializedSignature || '').trim();
-  if (!raw) {
-    return [];
-  }
-
-  try {
-    const bytes = Utilities.base64Decode(raw);
-    const json = Utilities.newBlob(bytes).getDataAsString();
-    const parsed = JSON.parse(json);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed
-      .map(function (stroke) {
-        if (!Array.isArray(stroke)) {
-          return [];
-        }
-
-        return stroke
-          .map(function (point) {
-            return {
-              x: Number(point && point.x),
-              y: Number(point && point.y)
-            };
-          })
-          .filter(function (point) {
-            return isFinite(point.x) && isFinite(point.y);
-          });
-      })
-      .filter(function (stroke) {
-        return stroke.length > 0;
-      });
-  } catch (error) {
-    return [];
-  }
-}
-
-function sendBusinessConfirmation_(submission, agreementId, pdfFile) {
-  const subject = 'PERX agreement received';
+  const subject = 'Confirm your PERX business signup';
   const htmlBody =
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
-    '<h2 style="margin:0 0 12px;">PERX agreement received</h2>' +
-    '<p>Thank you for applying to join PERX Rewards.</p>' +
-    '<p>Your signed Business Participation Agreement has been received and is effective as of your electronic submission. Business activation remains subject to PERX approval.</p>' +
-    '<p><strong>Agreement Number:</strong> ' + escapeHtml_(agreementId) + '</p>' +
-    '<p><strong>Your Offer:</strong> ' + escapeHtml_(submission.offerDetails) + '</p>' +
-    '<p><strong>Restrictions:</strong> ' + escapeHtml_(submission.offerRestrictions) + '</p>' +
-    '<p>If you have any questions, contact ' + escapeHtml_(SUPPORT_EMAIL) + '.</p>' +
+    '<h2 style="margin:0 0 10px;">Confirm your business</h2>' +
+    '<p>Thanks for joining the PERX pilot.</p>' +
+    '<p>Confirm your email to submit <strong>' + escapeHtml_(businessName) + '</strong> for review.</p>' +
+    '<p><a style="display:inline-block;padding:10px 16px;border-radius:999px;background:#0d5bd6;color:#fff;text-decoration:none;font-weight:700;" href="' +
+    escapeHtml_(verificationUrl) +
+    '">Confirm Business</a></p>' +
+    '<p style="font-size:12px;color:#5b718a;">You did not create a PERX business submission? You can ignore this email.</p>' +
     '</div>';
 
   MailApp.sendEmail({
-    to: submission.businessEmail,
+    to: toEmail,
     subject: subject,
     htmlBody: htmlBody,
     body:
-      'PERX agreement received\n\n' +
-      'Thank you for applying to join PERX Rewards.\n' +
-      'Your signed Business Participation Agreement has been received and is effective as of your electronic submission. Business activation remains subject to PERX approval.\n\n' +
-      'Agreement Number: ' + agreementId + '\n' +
-      'Offer: ' + submission.offerDetails + '\n' +
-      'Restrictions: ' + submission.offerRestrictions + '\n' +
-      'Support: ' + SUPPORT_EMAIL,
-    name: EMAIL_FROM_NAME,
-    attachments: pdfFile ? [pdfFile.getBlob()] : []
+      'Confirm your business\n\n' +
+      'Thanks for joining the PERX pilot.\n\n' +
+      'Confirm your email to submit ' + businessName + ' for review:\n' + verificationUrl + '\n\n' +
+      'You did not create a PERX business submission? You can ignore this email.',
+    name: EMAIL_FROM_NAME
   });
 }
 
-function sendAdminSubmissionEmail_(submission, agreementId, status, fraudFlags, pdfUrl) {
+function sendAdminPilotReviewEmail_(row) {
   if (!ADMIN_EMAIL) {
     return;
   }
 
-  const approveUrl = buildAdminActionUrl_(ACTIONS.ADMIN_APPROVE, agreementId, submission.businessName);
-  const rejectUrl = buildAdminActionUrl_(ACTIONS.ADMIN_REJECT, agreementId, submission.businessName);
-  const requestInfoUrl = buildAdminActionUrl_(ACTIONS.ADMIN_REQUEST_INFO, agreementId, submission.businessName);
-  const pdfHtml = pdfUrl
-    ? '<p><a href="' + escapeHtml_(pdfUrl) + '">View Agreement PDF</a></p>'
-    : '<p><strong>Agreement PDF:</strong> Not generated automatically. Use the sheet record for review.</p>';
-  const pdfText = pdfUrl || 'Not generated automatically. Use the sheet record for review.';
+  const submissionId = cleanText_(row.submissionId || row.agreementId);
+  const approveUrl = buildAdminActionUrl_(ACTIONS.ADMIN_APPROVE_LIVE, submissionId);
+  const pauseUrl = buildAdminActionUrl_(ACTIONS.ADMIN_PAUSE, submissionId);
+  const archiveUrl = buildAdminActionUrl_(ACTIONS.ADMIN_ARCHIVE, submissionId);
 
   const htmlBody =
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
-    '<h2 style="margin:0 0 12px;">New business submitted</h2>' +
-    '<p><strong>Business Name:</strong> ' + escapeHtml_(submission.businessName) + '</p>' +
-    '<p><strong>Signer:</strong> ' + escapeHtml_(submission.ownerName) + '</p>' +
-    '<p><strong>Role at the Business:</strong> ' + escapeHtml_(submission.signerRole) + '</p>' +
-    '<p><strong>Authority to Sign:</strong> ' + escapeHtml_(submission.authorityBasis) + '</p>' +
-    '<p><strong>Email:</strong> ' + escapeHtml_(submission.businessEmail) + '</p>' +
-    '<p><strong>Phone:</strong> ' + escapeHtml_(submission.businessPhone) + '</p>' +
-    '<p><strong>Offer:</strong> ' + escapeHtml_(submission.offerDetails) + '</p>' +
-    '<p><strong>Restrictions:</strong> ' + escapeHtml_(submission.offerRestrictions) + '</p>' +
-    '<p><strong>Offer Notes/Requests:</strong> ' + escapeHtml_(submission.notes || 'None provided') + '</p>' +
-    '<p><strong>Agreement ID:</strong> ' + escapeHtml_(agreementId) + '</p>' +
-    '<p><strong>Status:</strong> ' + escapeHtml_(status) + '</p>' +
-    '<p><strong>Verification:</strong> Email ' +
-    escapeHtml_(verificationStatusLabel_(submission.emailVerificationStatus)) +
-    ' | Phone ' +
-    escapeHtml_(verificationStatusLabel_(submission.phoneVerificationStatus)) +
-    '</p>' +
-    pdfHtml +
-    '<p><a href="' + escapeHtml_(approveUrl) + '">Approve</a> | ' +
-    '<a href="' + escapeHtml_(rejectUrl) + '">Reject</a> | ' +
-    '<a href="' + escapeHtml_(requestInfoUrl) + '">Request More Information</a></p>' +
+    '<h2 style="margin:0 0 12px;">PERX business pending review</h2>' +
+    '<p><strong>Business:</strong> ' + escapeHtml_(row.businessName) + '</p>' +
+    '<p><strong>Address:</strong> ' + escapeHtml_(row.businessAddress) + '</p>' +
+    '<p><strong>Contact:</strong> ' + escapeHtml_(row.contactName || row.ownerName) + ' (' + escapeHtml_(row.contactRole || row.signerRole) + ')</p>' +
+    '<p><strong>Phone:</strong> ' + escapeHtml_(row.phone || row.businessPhone) + '</p>' +
+    '<p><strong>Email:</strong> ' + escapeHtml_(row.email || row.businessEmail) + '</p>' +
+    '<p><strong>Email verified:</strong> Yes</p>' +
+    '<p><strong>Submitted PERX:</strong> ' + escapeHtml_(row.perxOffer || row.offerDetails) + '</p>' +
+    '<p><strong>Restrictions:</strong> ' + escapeHtml_(row.restrictions || row.offerRestrictions || 'None') + '</p>' +
+    '<p><strong>Submission date:</strong> ' + escapeHtml_(cleanText_(row.submittedAtPilot || row.createdAt)) + '</p>' +
+    '<p><strong>Verification date:</strong> ' + escapeHtml_(cleanText_(row.emailVerifiedAt)) + '</p>' +
+    '<p><strong>Status:</strong> Pending Review</p>' +
+    '<p><a href="' + escapeHtml_(approveUrl) + '">Approve & Make Live</a> | ' +
+    '<a href="' + escapeHtml_(pauseUrl) + '">Pause</a> | ' +
+    '<a href="' + escapeHtml_(archiveUrl) + '">Reject/Archive</a></p>' +
     '</div>';
 
   MailApp.sendEmail({
     to: ADMIN_EMAIL,
-    subject: 'PERX Submission Pending Review: ' + submission.businessName,
+    subject: 'PERX Pending Review: ' + row.businessName,
     htmlBody: htmlBody,
     body:
-      'New business submitted\n\n' +
-      'Business: ' + submission.businessName + '\n' +
-      'Signer: ' + submission.ownerName + '\n' +
-      'Role at the Business: ' + submission.signerRole + '\n' +
-      'Authority to Sign: ' + submission.authorityBasis + '\n' +
-      'Email: ' + submission.businessEmail + '\n' +
-      'Phone: ' + submission.businessPhone + '\n' +
-      'Offer: ' + submission.offerDetails + '\n' +
-      'Restrictions: ' + submission.offerRestrictions + '\n' +
-      'Offer Notes/Requests: ' + (submission.notes || 'None provided') + '\n' +
-      'Agreement ID: ' + agreementId + '\n' +
-      'Status: ' + status + '\n' +
-      'Verification: Email ' + verificationStatusLabel_(submission.emailVerificationStatus) +
-      ' | Phone ' + verificationStatusLabel_(submission.phoneVerificationStatus) + '\n' +
-      'PDF: ' + pdfText + '\n\n' +
-      'Approve: ' + approveUrl + '\n' +
-      'Reject: ' + rejectUrl + '\n' +
-      'Request More Info: ' + requestInfoUrl,
+      'PERX business pending review\n\n' +
+      'Business: ' + row.businessName + '\n' +
+      'Address: ' + row.businessAddress + '\n' +
+      'Contact: ' + (row.contactName || row.ownerName) + ' (' + (row.contactRole || row.signerRole) + ')\n' +
+      'Phone: ' + (row.phone || row.businessPhone) + '\n' +
+      'Email: ' + (row.email || row.businessEmail) + '\n' +
+      'Email verified: Yes\n' +
+      'Offer: ' + (row.perxOffer || row.offerDetails) + '\n' +
+      'Restrictions: ' + (row.restrictions || row.offerRestrictions || 'None') + '\n' +
+      'Submitted: ' + (row.submittedAtPilot || row.createdAt) + '\n' +
+      'Verified: ' + row.emailVerifiedAt + '\n\n' +
+      'Approve & Make Live: ' + approveUrl + '\n' +
+      'Pause: ' + pauseUrl + '\n' +
+      'Reject/Archive: ' + archiveUrl,
     name: EMAIL_FROM_NAME
   });
 }
 
-function sendAdminDecisionEmail_(toEmail, businessName, agreementId, status, offer, notes) {
+function sendAdminDecisionEmail_(row, status) {
+  const toEmail = normalizeEmail_(row.email || row.businessEmail);
   if (!toEmail) {
     return;
   }
 
-  const subject = 'PERX Application Update: ' + status;
-  const approvalNote = status === 'Approved'
-    ? '<p>PERX has approved the Business for activation.</p>'
-    : '';
+  const subject = 'PERX status update: ' + status;
   const htmlBody =
     '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
-    '<h2 style="margin:0 0 12px;">PERX Application Update</h2>' +
-    '<p>Business: ' + escapeHtml_(businessName) + '</p>' +
-    '<p>Agreement ID: ' + escapeHtml_(agreementId) + '</p>' +
-    '<p>Status: <strong>' + escapeHtml_(status) + '</strong></p>' +
-    '<p>Offer: ' + escapeHtml_(offer) + '</p>' +
-    approvalNote +
-    '<p>Notes: ' + escapeHtml_(notes || 'N/A') + '</p>' +
-    '<p>For support, email ' + escapeHtml_(SUPPORT_EMAIL) + '.</p>' +
+    '<h2 style="margin:0 0 12px;">PERX status update</h2>' +
+    '<p><strong>' + escapeHtml_(row.businessName) + '</strong> is now: <strong>' + escapeHtml_(status) + '</strong></p>' +
+    '<p>For questions, contact ' + escapeHtml_(SUPPORT_EMAIL) + '.</p>' +
     '</div>';
 
   MailApp.sendEmail({
@@ -1244,556 +784,275 @@ function sendAdminDecisionEmail_(toEmail, businessName, agreementId, status, off
     subject: subject,
     htmlBody: htmlBody,
     body:
-      'PERX Application Update\n\n' +
-      'Business: ' + businessName + '\n' +
-      'Agreement ID: ' + agreementId + '\n' +
-      'Status: ' + status + '\n' +
-      (status === 'Approved' ? 'PERX has approved the Business for activation.\n' : '') +
-      'Offer: ' + offer + '\n' +
-      'Notes: ' + (notes || 'N/A') + '\n\n' +
-      'Support: ' + SUPPORT_EMAIL,
+      'PERX status update\n\n' +
+      row.businessName + ' is now: ' + status + '\n\n' +
+      'For questions, contact ' + SUPPORT_EMAIL + '.',
     name: EMAIL_FROM_NAME
   });
 }
 
-function sendEmailCode_(toEmail, displayName, code) {
-  const subject = 'Your PERX verification code';
-  const htmlBody =
-    '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#10233f;">' +
-    '<p>Hi ' + escapeHtml_(displayName || 'there') + ',</p>' +
-    '<p>Your PERX email verification code is:</p>' +
-    '<p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:8px 0;">' + escapeHtml_(code) + '</p>' +
-    '<p>This code expires in ' + VERIFICATION_TTL_MINUTES + ' minutes.</p>' +
-    '</div>';
-
-  MailApp.sendEmail({
-    to: toEmail,
-    subject: subject,
-    htmlBody: htmlBody,
-    body: 'Your PERX verification code is ' + code + '. It expires in ' + VERIFICATION_TTL_MINUTES + ' minutes.',
-    name: EMAIL_FROM_NAME
-  });
+function buildVerificationUrl_(submissionId, rawToken) {
+  return JOIN_BASE_URL + '?sid=' + encodeURIComponent(submissionId) + '&verify=' + encodeURIComponent(rawToken);
 }
 
-function getOrCreateSubmissionSheet_() {
-  const spreadsheet = getSpreadsheet_();
-  let sheet = spreadsheet.getSheetByName(SUBMISSIONS_SHEET_NAME);
+function buildAdminActionUrl_(action, submissionId) {
+  const now = Date.now();
+  const expiresAt = now + 3 * 24 * 60 * 60 * 1000;
+  const sig = buildAdminSignature_(submissionId, actionToStatus_(action), expiresAt);
+  const base = ScriptApp.getService().getUrl();
 
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(SUBMISSIONS_SHEET_NAME);
+  return base +
+    '?action=' + encodeURIComponent(action) +
+    '&submissionId=' + encodeURIComponent(submissionId) +
+    '&exp=' + encodeURIComponent(String(expiresAt)) +
+    '&sig=' + encodeURIComponent(sig);
+}
+
+function actionToStatus_(action) {
+  if (action === ACTIONS.ADMIN_APPROVE_LIVE) return 'LIVE';
+  if (action === ACTIONS.ADMIN_PAUSE) return 'PAUSED';
+  if (action === ACTIONS.ADMIN_ARCHIVE) return 'ARCHIVED';
+  return '';
+}
+
+function buildVerificationToken_() {
+  const rawToken = generateSecureToken_();
+  const hash = hashText_(rawToken);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + VERIFICATION_TTL_MINUTES * 60 * 1000);
+  return {
+    rawToken: rawToken,
+    hash: hash,
+    expiresAt: expiresAt
+  };
+}
+
+function generateSecureToken_() {
+  const entropy =
+    Utilities.getUuid() +
+    Utilities.getUuid() +
+    String(Date.now()) +
+    String(Math.random()) +
+    ScriptApp.getScriptId();
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, entropy, Utilities.Charset.UTF_8);
+  return Utilities.base64EncodeWebSafe(digest).replace(/=+$/g, '');
+}
+
+function validateAdminSignature_(payload, status) {
+  const submissionId = cleanText_(payload.submissionId || payload.sid);
+  const exp = Number(payload.exp || 0);
+  const sig = cleanText_(payload.sig);
+  if (!submissionId || !exp || !sig) {
+    return false;
+  }
+  if (exp < Date.now()) {
+    return false;
   }
 
-  const headers = [[
-    'agreementId',
-    'createdAt',
-    'agreementVersion',
-    'verificationSessionId',
-    'pendingStatus',
-    'businessName',
-    'businessAddress',
-    'city',
-    'businessPhone',
-    'businessEmail',
-    'website',
-    'state',
-    'zipCode',
-    'businessCategory',
-    'offerDetails',
-    'ownerName',
-    'jobTitle',
-    'notes',
-    'signatureName',
-    'signatureDate',
-    'drawnSignaturePresent',
-    'drawnSignature',
-    'submittedAtClient',
-    'ipAddress',
-    'browser',
-    'operatingSystem',
-    'deviceInfo',
-    'userAgent',
-    'approxLocation',
-    'emailVerificationStatus',
-    'phoneVerificationStatus',
-    'emailDomainStatus',
-    'publicBusinessMatchStatus',
-    'fraudFlags',
-    'pdfUrl',
-    'approvalStatus',
-    'approvalDate',
-    'adminNotes',
-    'ownershipVerified',
-    'updatedAt',
-    'internalTags',
-    'signerRole',
-    'authorityBasis',
-    'offerRestrictions',
-    'signatureEffectAcknowledged',
-    'perxRepresentativeName',
-    'perxRepresentativeTitle',
-    'perxRepresentativePhone',
-    'perxRepresentativeEmail',
-    'legacyPerxActionAt',
-    'maxDiscount'
-  ]];
-
-  const expectedColumns = headers[0].length;
-  ensureHeaders_(sheet, headers, expectedColumns);
-  formatSubmissionSheet_(sheet);
-  return sheet;
+  const expected = buildAdminSignature_(submissionId, status, exp);
+  return safeEquals_(sig, expected);
 }
 
-function appendSimpleResultRow_(submission, agreementId, status, submittedAt) {
-  const sheet = getOrCreateSimpleResultsSheet_();
-  sheet.appendRow([
-    formatIso_(submittedAt),
-    submission.businessName,
-    submission.ownerName,
-    submission.businessEmail,
-    submission.businessPhone,
-    submission.maxDiscount,
-    status
-  ]);
+function buildAdminSignature_(submissionId, status, exp) {
+  const secret = getAdminSecret_();
+  const base = submissionId + '|' + status + '|' + String(exp);
+  const bytes = Utilities.computeHmacSha256Signature(base, secret, Utilities.Charset.UTF_8);
+  return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/g, '');
 }
 
-function getOrCreateSimpleResultsSheet_() {
-  const spreadsheet = getSpreadsheet_();
-  let sheet = spreadsheet.getSheetByName(SIMPLE_RESULTS_SHEET_NAME);
-
-  if (!sheet) {
-    const legacySheet = spreadsheet.getSheetByName(LEGACY_SIMPLE_RESULTS_SHEET_NAME);
-    if (legacySheet) {
-      legacySheet.setName(SIMPLE_RESULTS_SHEET_NAME);
-      sheet = legacySheet;
-    } else {
-      sheet = spreadsheet.insertSheet(SIMPLE_RESULTS_SHEET_NAME);
-    }
+function getAdminSecret_() {
+  const props = PropertiesService.getScriptProperties();
+  let secret = cleanText_(props.getProperty('PERX_ADMIN_SECRET'));
+  if (secret) {
+    return secret;
   }
 
-  const headers = [[
-    'submittedAt',
-    'businessName',
-    'contactName',
-    'businessEmail',
-    'businessPhone',
-    'maxDiscount',
-    'status'
-  ]];
-
-  ensureHeaders_(sheet, headers, headers[0].length);
-  formatSimpleResultsSheet_(sheet);
-  hideSupportSheets_(spreadsheet, sheet);
-  return sheet;
+  // Bootstraps a per-script secret automatically if one has not been set.
+  secret = generateSecureToken_() + generateSecureToken_();
+  props.setProperty('PERX_ADMIN_SECRET', secret);
+  return secret;
 }
 
-function formatSimpleResultsSheet_(sheet) {
-  const lastColumn = sheet.getLastColumn();
-  if (lastColumn < 1) {
-    return;
-  }
-
-  sheet.setFrozenRows(1);
-  sheet.clearBandings();
-  sheet.getRange(1, 1, 1, lastColumn)
-    .setFontWeight('bold')
-    .setBackground('#10233f')
-    .setFontColor('#ffffff')
-    .setVerticalAlignment('middle');
-
-  if (!sheet.getFilter()) {
-    sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 1), lastColumn).createFilter();
-  }
-
-  if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn)
-      .setVerticalAlignment('middle')
-      .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
-  }
-
-  sheet.setColumnWidth(1, 160);
-  sheet.setColumnWidth(2, 220);
-  sheet.setColumnWidth(3, 180);
-  sheet.setColumnWidth(4, 220);
-  sheet.setColumnWidth(5, 150);
-  sheet.setColumnWidth(6, 110);
-  sheet.setColumnWidth(7, 120);
-}
-
-function getOrCreateVerificationSheet_() {
-  const spreadsheet = getSpreadsheet_();
-  let sheet = spreadsheet.getSheetByName(VERIFICATIONS_SHEET_NAME);
-
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(VERIFICATIONS_SHEET_NAME);
-  }
-
-  const headers = [[
-    'sessionId',
-    'createdAt',
-    'expiresAt',
-    'businessName',
-    'businessEmail',
-    'businessPhone',
-    'website',
-    'ownerName',
-    'emailCodeMasked',
-    'phoneConfirmationStatus',
-    'emailCodeHash',
-    'phoneConfirmationNotes',
-    'emailVerified',
-    'phoneVerified',
-    'emailVerifiedAt',
-    'phoneVerifiedAt',
-    'verificationIp',
-    'userAgent',
-    'deviceInfo',
-    'emailAttempts',
-    'phoneConfirmationAttempts',
-    'lastVerificationIp',
-    'phoneConfirmationMethod'
-  ]];
-
-  const expectedColumns = headers[0].length;
-  ensureHeaders_(sheet, headers, expectedColumns);
-  return sheet;
-}
-
-function getOrCreateAuditSheet_() {
-  const spreadsheet = getSpreadsheet_();
-  let sheet = spreadsheet.getSheetByName(AUDIT_SHEET_NAME);
-
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(AUDIT_SHEET_NAME);
-  }
-
-  const headers = [['timestamp', 'eventType', 'detailsJson']];
-  ensureHeaders_(sheet, headers, 3);
-  return sheet;
-}
-
-function authorizeOnce() {
-  authorizeOnce_();
-}
-
-function authorizeOnce_() {
-  getOrCreateSubmissionSheet_();
-  getOrCreateSimpleResultsSheet_();
-  getOrCreateVerificationSheet_();
-  getOrCreateAuditSheet_();
-
-  MailApp.getRemainingDailyQuota();
-
-  const doc = DocumentApp.create('PERX authorization test');
-  const file = DriveApp.getFileById(doc.getId());
-  file.setTrashed(true);
-}
-
-function hideSupportSheets_(spreadsheet, visibleSheet) {
-  const supportSheets = [
-    SUBMISSIONS_SHEET_NAME,
-    LEGACY_SIMPLE_RESULTS_SHEET_NAME,
-    VERIFICATIONS_SHEET_NAME,
-    AUDIT_SHEET_NAME,
-    SETTINGS_SHEET_NAME
-  ];
-
-  supportSheets.forEach(function (sheetName) {
-    const sheet = spreadsheet.getSheetByName(sheetName);
-    if (sheet && sheet !== visibleSheet) {
-      sheet.hideSheet();
-    }
-  });
-
-  if (visibleSheet) {
-    visibleSheet.showSheet();
-    spreadsheet.setActiveSheet(visibleSheet);
+function appendSubmissionObject_(sheet, rowObject) {
+function appendSubmissionObject_(rowObject) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const store = loadPilotStore_();
+    const submissionId = cleanText_(rowObject.submissionId || rowObject.agreementId);
+    store[submissionId] = Object.assign({}, rowObject);
+    savePilotStore_(store);
+  } finally {
+    lock.releaseLock();
   }
 }
 
-function ensureHeaders_(sheet, headers, expectedColumns) {
-  if (sheet.getMaxColumns() < expectedColumns) {
-    sheet.insertColumnsAfter(sheet.getMaxColumns(), expectedColumns - sheet.getMaxColumns());
-  }
 
-  if (sheet.getMaxColumns() > expectedColumns) {
-    sheet.deleteColumns(expectedColumns + 1, sheet.getMaxColumns() - expectedColumns);
-  }
-
-  sheet.getRange(1, 1, 1, expectedColumns).setValues(headers);
-}
-
-function formatSubmissionSheet_(sheet) {
-  const lastColumn = sheet.getLastColumn();
-  if (lastColumn < 1) {
-    return;
-  }
-
-  sheet.setFrozenRows(1);
-  sheet.clearBandings();
-  sheet.getRange(1, 1, 1, lastColumn)
-    .setFontWeight('bold')
-    .setBackground('#10233f')
-    .setFontColor('#ffffff')
-    .setVerticalAlignment('middle');
-
-  const existingFilter = sheet.getFilter();
-  if (!existingFilter) {
-    sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 1), lastColumn).createFilter();
-  }
-
-  if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn)
-      .setVerticalAlignment('middle')
-      .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
-
-    sheet.getRange(1, 1, sheet.getLastRow(), lastColumn)
-      .applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false);
-  }
-
-  sheet.setColumnWidth(1, 132);
-  sheet.setColumnWidth(2, 160);
-  sheet.setColumnWidth(3, 132);
-  sheet.setColumnWidth(4, 180);
-  sheet.setColumnWidth(5, 150);
-  sheet.autoResizeColumns(6, Math.min(lastColumn - 5, 8));
-  if (lastColumn > 13) {
-    sheet.setColumnWidths(14, Math.min(lastColumn - 13, 10), 180);
-  }
-  if (lastColumn > 23) {
-    sheet.setColumnWidths(24, Math.min(lastColumn - 23, 10), 170);
-  }
-  if (lastColumn > 33) {
-    sheet.setColumnWidths(34, Math.min(lastColumn - 33, 8), 150);
-  }
-
-  if (lastColumn >= 41) {
-    sheet.hideColumns(34);
-    sheet.hideColumns(41);
-  }
-}
-
-function findVerificationSessionRow_(sessionId) {
-  const sheet = getOrCreateVerificationSheet_();
-  const lastRow = sheet.getLastRow();
-
-  if (lastRow < 2) {
+function findPilotSubmissionRow_(submissionId) {
+function findPilotSubmissionRow_(submissionId) {
+  const store = loadPilotStore_();
+  const key = cleanText_(submissionId);
+  const row = store[key];
+  if (!row) {
     return null;
   }
 
-  const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-  for (let index = 0; index < values.length; index += 1) {
-    if (String(values[index][0] || '') === sessionId) {
-      return { sheet: sheet, row: index + 2 };
-    }
-  }
-
-  return null;
+  return {
+    submissionId: key,
+    object: Object.assign({}, row)
+  };
 }
 
-function findSubmissionByAgreementId_(agreementId) {
-  const sheet = getOrCreateSubmissionSheet_();
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
-    return null;
-  }
 
-  const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-  for (let index = 0; index < values.length; index += 1) {
-    if (String(values[index][0] || '') === agreementId) {
-      return { sheet: sheet, row: index + 2 };
-    }
+function updateSubmissionFields_(found, updates) {
+function updateSubmissionFields_(found, updates) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const store = loadPilotStore_();
+    const current = store[found.submissionId] || {};
+    const next = Object.assign({}, current, updates || {});
+    store[found.submissionId] = next;
+    savePilotStore_(store);
+  } finally {
+    lock.releaseLock();
   }
-
-  return null;
 }
 
-function nextAgreementId_() {
-  const spreadsheet = getSpreadsheet_();
-  let settings = spreadsheet.getSheetByName(SETTINGS_SHEET_NAME);
 
-  if (!settings) {
-    settings = spreadsheet.insertSheet(SETTINGS_SHEET_NAME);
-    settings.getRange(1, 1, 1, 2).setValues([['key', 'value']]);
-    settings.getRange(2, 1, 1, 2).setValues([['agreementSequence', String(AGREEMENT_START_SEQUENCE - 1)]]);
-  }
+function listPilotRows_() {
+function listPilotRows_() {
+  const store = loadPilotStore_();
+  const rows = [];
+  Object.keys(store).forEach(function (key) {
+    const row = store[key] || {};
+    const signupType = cleanText_(row.signupType);
+    const submissionId = cleanText_(row.submissionId || row.agreementId || key);
+    if (signupType === 'PILOT_2026_SIMPLE' || submissionId.indexOf(PILOT_ID_PREFIX) === 0) {
+      rows.push(Object.assign({}, row));
+    }
+  });
+  return rows;
+}
 
-  const rows = Math.max(settings.getLastRow() - 1, 0);
-  let rowIndex = 0;
 
-  if (rows > 0) {
-    const values = settings.getRange(2, 1, rows, 2).getValues();
-    for (let index = 0; index < values.length; index += 1) {
-      if (String(values[index][0]) === 'agreementSequence') {
-        rowIndex = index + 2;
-        break;
-      }
+function summarizePilotCounts_(rows) {
+  var counts = {
+    signedOn: 0,
+    live: 0,
+    pending: 0,
+    unverified: 0
+  };
+
+  for (var i = 0; i < rows.length; i += 1) {
+    var row = rows[i];
+    var verified = asBoolean_(row.emailVerified) || cleanText_(row.emailVerificationStatus).toLowerCase() === 'confirmed';
+    var status = cleanText_(row.pilotStatus || row.status || row.approvalStatus || 'UNVERIFIED');
+
+    if (!verified) {
+      counts.unverified += 1;
+      continue;
+    }
+
+    counts.signedOn += 1;
+    if (status === 'LIVE') {
+      counts.live += 1;
+    } else if (status === 'PENDING') {
+      counts.pending += 1;
     }
   }
 
-  if (!rowIndex) {
-    rowIndex = settings.getLastRow() + 1;
-    settings.getRange(rowIndex, 1, 1, 2).setValues([['agreementSequence', String(AGREEMENT_START_SEQUENCE - 1)]]);
+  return counts;
+}
+
+function refreshPilotAdminSheet_() {
+  return;
+}
+
+function appendSimpleResultRow_(row) {
+  return;
+}
+
+function nextPilotSubmissionId_() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const current = Number(props.getProperty(PILOT_SEQUENCE_KEY) || String(PILOT_SEQUENCE_START - 1));
+    const next = current + 1;
+    props.setProperty(PILOT_SEQUENCE_KEY, String(next));
+    return PILOT_ID_PREFIX + padNumber_(next, 6);
+  } finally {
+    lock.releaseLock();
   }
-
-  const current = Number(settings.getRange(rowIndex, 2).getValue() || AGREEMENT_START_SEQUENCE - 1);
-  const next = current + 1;
-  settings.getRange(rowIndex, 2).setValue(String(next));
-
-  return AGREEMENT_PREFIX + padNumber_(next, 6);
 }
 
 function passesRateLimit_(ipAddress, email) {
-  if (isAdminBypassEmail_(email)) {
-    return true;
-  }
-
   const ip = cleanText_(ipAddress);
-  if (!ip) {
+  const normalizedEmail = normalizeEmail_(email);
+
+  const key = [ip, normalizedEmail].join('|');
+  if (!key.replace(/\|/g, '')) {
     return true;
   }
 
-  const sheet = getOrCreateAuditSheet_();
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
-    return true;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const rateData = safeJsonParse_(props.getProperty(PILOT_RATE_KEY)) || {};
+    const now = Date.now();
+    const cutoff = now - RATE_WINDOW_MS;
+    const arr = Array.isArray(rateData[key]) ? rateData[key] : [];
+    const trimmed = arr.filter(function (ms) {
+      return Number(ms) >= cutoff;
+    });
+    const allowed = trimmed.length < RATE_LIMIT;
+    if (allowed) {
+      trimmed.push(now);
+    }
+    rateData[key] = trimmed.slice(-RATE_LIMIT * 2);
+    props.setProperty(PILOT_RATE_KEY, JSON.stringify(rateData));
+    return allowed;
+  } finally {
+    lock.releaseLock();
   }
-
-  const startRow = Math.max(2, lastRow - 200);
-  const values = sheet.getRange(startRow, 1, lastRow - startRow + 1, 3).getValues();
-
-  const cutoffMs = Date.now() - SUBMISSION_RATE_WINDOW_MS;
-  let count = 0;
-
-  values.forEach(function (row) {
-    const timestamp = parseDate_(row[0]);
-    if (!timestamp || timestamp.getTime() < cutoffMs) {
-      return;
-    }
-
-    const details = safeJsonParse_(row[2]);
-    if (details && cleanText_(details.ipAddress || details.ip) === ip) {
-      count += 1;
-    }
-  });
-
-  return count < SUBMISSION_RATE_LIMIT;
-}
-
-function isAdminBypassEmail_(email) {
-  return normalizeEmail_(email) === normalizeEmail_(ADMIN_BYPASS_EMAIL);
-}
-
-function buildAdminActionUrl_(action, agreementId, businessName) {
-  const base = ScriptApp.getService().getUrl();
-  return base +
-    '?action=' + encodeURIComponent(action) +
-    '&agreementId=' + encodeURIComponent(agreementId) +
-    '&businessName=' + encodeURIComponent(cleanText_(businessName));
-}
-
-function buildAdminResultPage_(result, status) {
-  const ok = !!(result && result.ok);
-  const color = ok ? '#0f8a4b' : '#be2b2b';
-  const title = ok ? 'PERX Admin Action Completed' : 'PERX Admin Action Failed';
-  const message = escapeHtml_((result && result.message) || 'Unable to process request.');
-  const agreementId = escapeHtml_((result && result.agreementId) || 'N/A');
-
-  return (
-    '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>' + title + '</title>' +
-    '<style>' +
-    'body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;font-family:Arial,sans-serif;background:linear-gradient(180deg,#f6f9ff,#eef3ff);color:#10233f;}' +
-    '.card{max-width:620px;width:100%;background:#fff;border:1px solid rgba(16,35,63,.12);border-radius:16px;padding:24px;box-shadow:0 20px 50px rgba(16,35,63,.12);}' +
-    '.badge{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(15,111,255,.08);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1d63d3;}' +
-    'h1{margin:12px 0 10px;font-size:28px;line-height:1.1;}' +
-    'p{margin:8px 0;line-height:1.55;color:#27446d;}' +
-    '.status{font-weight:700;color:' + color + ';}' +
-    '</style></head><body><main class="card"><span class="badge">PERX Admin</span>' +
-    '<h1>' + title + '</h1>' +
-    '<p><strong>Agreement ID:</strong> ' + agreementId + '</p>' +
-    '<p><strong>Requested Status:</strong> ' + escapeHtml_(status) + '</p>' +
-    '<p class="status">' + message + '</p>' +
-    '</main></body></html>'
-  );
 }
 
 function logAudit_(eventType, details) {
-  const sheet = getOrCreateAuditSheet_();
-  sheet.appendRow([
-    formatIso_(new Date()),
-    cleanText_(eventType),
-    JSON.stringify(details || {})
-  ]);
+  Logger.log(JSON.stringify({
+    timestamp: formatIso_(new Date()),
+    eventType: cleanText_(eventType),
+    details: details || {}
+  }));
 }
 
 function tryLogAudit_(eventType, details) {
   try {
     logAudit_(eventType, details);
   } catch (error) {
-    // Avoid hiding the original user-facing result if audit logging fails.
+    // Keep responses stable even if audit logging fails.
   }
 }
 
-function getErrorMessage_(error) {
-  if (error && error.message) {
-    return cleanText_(error.message);
-  }
-
-  return cleanText_(error) || 'Unknown error';
+function loadPilotStore_() {
+  const props = PropertiesService.getScriptProperties();
+  const parsed = safeJsonParse_(props.getProperty(PILOT_STORE_KEY));
+  return parsed && typeof parsed === 'object' ? parsed : {};
 }
 
-function getErrorStack_(error) {
-  if (error && error.stack) {
-    return cleanText_(error.stack);
-  }
-
-  return '';
+function savePilotStore_(store) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty(PILOT_STORE_KEY, JSON.stringify(store || {}));
 }
 
-function simulateBusinessMatch_(submission) {
-  const hasFields = !!(submission.businessName && submission.businessAddress && submission.businessPhone);
-  if (!hasFields) {
-    return 'Insufficient Data';
-  }
+function hashText_(value) {
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(value || ''),
+    Utilities.Charset.UTF_8
+  );
 
-  return 'Manual Confirmation Required';
-}
-
-function likelyBusinessName_(name) {
-  const value = cleanText_(name);
-  if (!value) {
-    return false;
-  }
-
-  return value.length >= 3 && /[a-zA-Z]/.test(value);
-}
-
-function isHighRiskLocation_(approxLocation) {
-  const value = cleanText_(approxLocation).toLowerCase();
-  if (!value) {
-    return false;
-  }
-
-  const riskyWords = ['tor', 'anonymous', 'unknown', 'datacenter'];
-  for (let index = 0; index < riskyWords.length; index += 1) {
-    if (value.indexOf(riskyWords[index]) !== -1) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function createSessionId_() {
-  return Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 8);
-}
-
-function generateSixDigitCode_() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-function hashCode_(value) {
-  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(value), Utilities.Charset.UTF_8);
   return digest
     .map(function (byte) {
       const v = (byte + 256) % 256;
@@ -1810,70 +1069,15 @@ function safeEquals_(a, b) {
     return false;
   }
 
-  let diff = 0;
-  for (let i = 0; i < left.length; i += 1) {
+  var diff = 0;
+  for (var i = 0; i < left.length; i += 1) {
     diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
   }
-
   return diff === 0;
-}
-
-function maskCode_(code) {
-  const value = String(code || '');
-  if (value.length < 6) {
-    return '***';
-  }
-  return value.slice(0, 2) + '****';
-}
-
-function getSpreadsheet_() {
-  const id = extractSpreadsheetId_(SPREADSHEET_ID);
-  if (id) {
-    return SpreadsheetApp.openById(id);
-  }
-  return SpreadsheetApp.getActiveSpreadsheet();
-}
-
-function extractSpreadsheetId_(value) {
-  const raw = String(value || '').trim();
-  if (!raw) {
-    return '';
-  }
-
-  const match = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  if (match && match[1]) {
-    return match[1];
-  }
-
-  if (/^[a-zA-Z0-9-_]{20,}$/.test(raw)) {
-    return raw;
-  }
-
-  return '';
 }
 
 function cleanText_(value) {
   return String(value || '').trim();
-}
-
-function normalizeMoney_(value) {
-  const amount = Number(String(value || '').replace(/[^0-9.]/g, ''));
-  if (!isFinite(amount) || amount <= 0) {
-    return '';
-  }
-  return amount.toFixed(2);
-}
-
-function formatCurrency_(amount) {
-  return '$' + Number(amount || 0).toFixed(2);
-}
-
-function buildOfferDetails_(maxDiscount) {
-  return 'PERX may set discounts up to ' + formatCurrency_(maxDiscount) + ' for an eligible proximity-circle pass.';
-}
-
-function buildOfferRestrictions_(maxDiscount) {
-  return 'PERX determines the discount amount and required minimum purchase, subject to the business maximum of ' + formatCurrency_(maxDiscount) + '. Customer claim eligibility resets 24 hours after each claim.';
 }
 
 function normalizeEmail_(email) {
@@ -1886,6 +1090,14 @@ function cleanPhone_(value) {
 
 function isValidEmail_(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function asBoolean_(value) {
+  if (value === true || value === false) {
+    return value;
+  }
+  const lowered = cleanText_(value).toLowerCase();
+  return lowered === 'true' || lowered === 'yes' || lowered === '1';
 }
 
 function parseDate_(value) {
@@ -1914,14 +1126,6 @@ function padNumber_(value, size) {
   return output;
 }
 
-function yesNo_(value) {
-  return value ? 'Yes' : 'No';
-}
-
-function verificationStatusLabel_(value) {
-  return value ? 'Confirmed' : 'Manual confirmation pending';
-}
-
 function safeJsonParse_(raw) {
   try {
     return JSON.parse(raw);
@@ -1930,7 +1134,18 @@ function safeJsonParse_(raw) {
   }
 }
 
+function getErrorMessage_(error) {
+  if (error && error.message) {
+    return cleanText_(error.message);
+  }
+  return cleanText_(error) || 'Unknown error';
+}
+
 function jsonResponse_(payload) {
+  if (payload && payload.html) {
+    return HtmlService.createHtmlOutput(String(payload.message || ''));
+  }
+
   const output = ContentService.createTextOutput(JSON.stringify(payload));
   output.setMimeType(ContentService.MimeType.JSON);
   return output;
