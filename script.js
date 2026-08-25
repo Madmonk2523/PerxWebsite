@@ -413,7 +413,13 @@ function updateOfferPreview() {
   const restrictions = cleanValue(pilotSignupForm?.restrictions?.value || "");
   const rewardValue = parseCurrency(values.rewardPerPass || "$0.25");
   const maxValue = parseCurrency(maximum);
-  const stepValues = [rewardValue, rewardValue * 2, rewardValue * 3, maxValue];
+  const stepValues = [];
+  [rewardValue, rewardValue * 2, rewardValue * 3, maxValue].forEach((amount) => {
+    const cappedAmount = Math.min(amount, maxValue);
+    if (cappedAmount > 0 && !stepValues.includes(cappedAmount)) {
+      stepValues.push(cappedAmount);
+    }
+  });
   const previewSteps = stepValues.map((amount) => formatCurrency(amount)).join(" → ");
   const displayMinimum = minimum ? formatCurrency(minimum) : "None";
   const maxCost = maximum;
