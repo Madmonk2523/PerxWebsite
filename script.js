@@ -27,7 +27,18 @@ const verifiedBusinessCopy = document.getElementById("verifiedBusinessCopy");
 const verifiedOffer = document.getElementById("verifiedOffer");
 const verifiedRestrictions = document.getElementById("verifiedRestrictions");
 
+const rewardPerPassField = document.getElementById("rewardPerPass");
+const maximumRewardField = document.getElementById("maximumReward");
+const minimumPurchaseField = document.getElementById("minimumPurchase");
+const summaryBusinessName = document.getElementById("summaryBusinessName");
+const summaryBusinessNamePreview = document.getElementById("summaryBusinessNamePreview");
+const summaryMaximum = document.getElementById("summaryMaximum");
+const summaryMinimum = document.getElementById("summaryMinimum");
+const summaryRestrictions = document.getElementById("summaryRestrictions");
+const liveOfferExample = document.getElementById("liveOfferExample");
+
 setupEventListeners();
+updateOfferPreview();
 handleVerificationFromUrl();
 
 function setupEventListeners() {
@@ -77,6 +88,15 @@ function setupEventListeners() {
 
   if (editEmailForm) {
     editEmailForm.addEventListener("submit", updateEmailAndResend);
+  }
+
+  if (pilotSignupForm) {
+    pilotSignupForm.businessName?.addEventListener("input", updateOfferPreview);
+    pilotSignupForm.maximumReward?.addEventListener("input", updateOfferPreview);
+    pilotSignupForm.restrictions?.addEventListener("input", updateOfferPreview);
+    rewardPerPassField?.addEventListener("change", updateOfferPreview);
+    maximumRewardField?.addEventListener("input", updateOfferPreview);
+    minimumPurchaseField?.addEventListener("change", updateOfferPreview);
   }
 }
 
@@ -135,8 +155,7 @@ function validateForm() {
   const requiredTextFields = [
     ["businessName", "Business name is required."],
     ["businessAddress", "Business address is required."],
-    ["contactName", "Your name is required."],
-    ["perxOffer", "Your PERX offer is required."]
+    ["contactName", "Your name is required."]
   ];
 
   requiredTextFields.forEach(([field, message]) => {
@@ -162,6 +181,12 @@ function validateForm() {
     ok = false;
   }
 
+  const perxValue = cleanValue(values.maximumReward || values.rewardPerPass || "");
+  if (!perxValue) {
+    setFieldError("maximumReward", "Set your maximum reward.");
+    ok = false;
+  }
+
   if (!values.authorizationConfirmed) {
     setFieldError("authorizationConfirmed", "You must confirm authorization before joining.");
     ok = false;
@@ -172,6 +197,9 @@ function validateForm() {
 
 function buildPayload() {
   const values = getFormValues();
+  const maxReward = normalizeMoney(values.maximumReward);
+  const perPass = normalizeMoney(values.rewardPerPass);
+  const offerText = `${perPass || "$0.25"} per pass · maximum ${maxReward || "$1.00"}`;
   return {
     businessName: values.businessName,
     businessAddress: values.businessAddress,
@@ -179,7 +207,7 @@ function buildPayload() {
     contactRole: values.contactRole,
     phone: values.phone,
     email: values.email,
-    perxOffer: values.perxOffer,
+    perxOffer: offerText,
     restrictions: values.restrictions,
     authorizationConfirmed: values.authorizationConfirmed,
     ipAddress: "",
@@ -196,7 +224,9 @@ function getFormValues() {
     contactRole: cleanValue(pilotSignupForm.contactRole.value),
     phone: cleanValue(pilotSignupForm.phone.value),
     email: cleanValue(pilotSignupForm.email.value).toLowerCase(),
-    perxOffer: cleanValue(pilotSignupForm.perxOffer.value),
+    rewardPerPass: cleanValue(rewardPerPassField?.value || ""),
+    maximumReward: cleanValue(maximumRewardField?.value || ""),
+    minimumPurchase: cleanValue(minimumPurchaseField?.value || ""),
     restrictions: cleanValue(pilotSignupForm.restrictions.value),
     authorizationConfirmed: !!pilotSignupForm.authorizationConfirmed.checked
   };
@@ -356,6 +386,28 @@ function showVerificationError(result, submissionId) {
   }
 }
 
+function updateOfferPreview() {
+  const values = getFormValues();
+  const businessName = values.businessName || "Your business";
+  const reward = normalizeMoney(values.rewardPerPass || "$0.25");
+  const maximum = normalizeMoney(values.maximumReward || "$1.00");
+  const minimum = normalizeMoney(values.minimumPurchase || "None");
+  const restrictions = cleanValue(pilotSignupForm?.restrictions?.value || "");
+
+  if (summaryBusinessName) summaryBusinessName.textContent = businessName;
+  if (summaryBusinessNamePreview) summaryBusinessNamePreview.textContent = businessName;
+  if (summaryMaximum) summaryMaximum.textContent = maximum;
+  if (summaryMinimum) summaryMinimum.textContent = `Minimum purchase: ${minimum}`;
+
+  if (summaryRestrictions) {
+    summaryRestrictions.textContent = restrictions ? `Restrictions: ${restrictions}` : "Restrictions: None";
+  }
+
+  if (liveOfferExample) {
+    liveOfferExample.textContent = `${reward} per pass · ${maximum} maximum`;
+  }
+}
+
 function setFeedback(element, message, type) {
   if (!element) {
     return;
@@ -390,6 +442,15 @@ function clearAllFieldErrors() {
 
 function cleanValue(value) {
   return String(value || "").trim();
+}
+
+function normalizeMoney(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "$0.00";
+  if (/^\$/.test(normalized)) return normalized;
+  const numeric = Number(normalized.replace(/[^\d.]/g, ""));
+  if (Number.isNaN(numeric)) return "$0.00";
+  return `$${numeric.toFixed(2)}`;
 }
 
 function isValidEmail(email) {
