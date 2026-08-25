@@ -750,6 +750,7 @@ function sendPilotVerificationEmail_(row, rawToken) {
 
   MailApp.sendEmail({
     to: toEmail,
+    cc: ADMIN_EMAIL,
     subject: subject,
     htmlBody: htmlBody,
     body:
@@ -838,6 +839,7 @@ function sendAdminDecisionEmail_(row, status) {
 
   MailApp.sendEmail({
     to: toEmail,
+    cc: ADMIN_EMAIL,
     subject: subject,
     htmlBody: htmlBody,
     body:
