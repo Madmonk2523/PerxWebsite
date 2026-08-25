@@ -28,6 +28,7 @@ body {
     radial-gradient(circle at 100% 20%, rgba(65, 144, 252, 0.12), transparent 32%),
     linear-gradient(180deg, #f9fbfd, #f2f5f8);
   overflow-x: hidden;
+  text-rendering: optimizeLegibility;
 }
 
 .glow {
@@ -85,19 +86,21 @@ body {
 }
 
 .page {
-  width: min(100%, 68rem);
+  width: min(100%, 72rem);
   margin: 0 auto;
   padding: 1.1rem 1rem 2.4rem;
   display: grid;
   gap: 1.6rem;
+  justify-items: center;
 }
 
 .hero,
 .how,
 .panel,
 .faq {
+  width: min(100%, 72rem);
   border: 1px solid var(--line);
-  border-radius: 1.3rem;
+  border-radius: 1.4rem;
   background: linear-gradient(145deg, #ffffff, #f9fbfd);
   box-shadow: 0 20px 44px rgba(22, 45, 71, 0.1);
 }
@@ -106,6 +109,11 @@ body {
 .how,
 .faq {
   padding: clamp(1rem, 2.4vw, 2rem);
+}
+
+.hero {
+  max-width: 58rem;
+  text-align: center;
 }
 
 .hero h1,
@@ -132,10 +140,11 @@ body {
 }
 
 .hero-copy {
-  margin: 0.9rem 0 0;
+  margin: 0.9rem auto 0;
   max-width: 48rem;
   color: #294662;
   line-height: 1.58;
+  font-size: 1.06rem;
 }
 
 .hero-trust {
@@ -188,18 +197,26 @@ body {
   font-size: clamp(1.6rem, 4vw, 2.2rem);
 }
 
+.how {
+  text-align: center;
+}
+
 .how-grid {
   margin-top: 1rem;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.8rem;
+  justify-items: center;
 }
 
 .how-grid article {
+  width: 100%;
+  max-width: 18.5rem;
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: #ffffff;
   padding: 0.9rem;
+  text-align: center;
 }
 
 .step-no {
@@ -221,10 +238,14 @@ body {
 
 .form-wrap {
   display: grid;
+  width: min(100%, 52rem);
+  margin: 0 auto;
 }
 
 .panel {
   padding: clamp(1rem, 2.4vw, 1.8rem);
+  max-width: 52rem;
+  margin: 0 auto;
 }
 
 .panel-subhead {
@@ -278,6 +299,53 @@ select:focus {
   margin: 0.1rem 0 0;
   color: #5b7088;
   font-size: 0.86rem;
+}
+
+.faq {
+  max-width: 58rem;
+  padding: 1.2rem 1.2rem 1.4rem;
+  text-align: center;
+}
+
+.faq details {
+  width: min(100%, 44rem);
+  margin: 0.8rem auto 0;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #ffffff, #f5f8fc);
+  padding: 1rem 1.1rem;
+  text-align: left;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.faq details[open] {
+  box-shadow: 0 10px 24px rgba(27, 58, 92, 0.08);
+}
+
+.faq summary {
+  list-style: none;
+  cursor: pointer;
+  font-weight: 700;
+  color: #24486f;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary::after {
+  content: "+";
+  font-size: 1.4rem;
+  color: #2f6fbe;
+  line-height: 1;
+}
+
+.faq details[open] summary::after {
+  content: "–";
 }
 
 .confirm-box {
