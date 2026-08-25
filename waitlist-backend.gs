@@ -95,6 +95,9 @@ function routeAction_(action, payload, isGet) {
   switch (action) {
     case ACTIONS.SUBMIT_PILOT_SIGNUP:
       return submitPilotSignup_(payload);
+    case ACTIONS.START_VERIFICATION:
+    case ACTIONS.SUBMIT_AGREEMENT:
+      return submitPilotSignup_(payload);
     case ACTIONS.RESEND_VERIFICATION_EMAIL:
       return resendVerificationEmail_(payload);
     case ACTIONS.UPDATE_SUBMISSION_EMAIL:
@@ -111,9 +114,7 @@ function routeAction_(action, payload, isGet) {
       return adminStatusUpdate_(payload, 'ARCHIVED', isGet);
 
     // Legacy behavior: redirect to simple pilot messaging instead of hard failure.
-    case ACTIONS.START_VERIFICATION:
     case ACTIONS.VERIFY_CODE:
-    case ACTIONS.SUBMIT_AGREEMENT:
     case ACTIONS.ADMIN_APPROVE:
     case ACTIONS.ADMIN_REJECT:
     case ACTIONS.ADMIN_REQUEST_INFO:
